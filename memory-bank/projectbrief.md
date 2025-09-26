@@ -16,11 +16,17 @@ Lab MoCap is a computer vision project that combines object detection, multi-obj
 
 5. **Performance Monitoring**: Maintain real-time processing capabilities with comprehensive performance profiling for optimization.
 
-6. **Future: Joint Angle Analysis**: Develop capabilities to calculate lower limb joint angles from extracted keypoint positions for biomechanical assessment.
+6. **Biomechanical Analysis Applications**: Develop specialized analysis capabilities including joint angle calculations and movement pattern recognition for specific biomechanical assessments.
 
 ## Current Focus
 
-The immediate focus is on establishing a stable real-time processing pipeline that can handle live RTSP camera streams while maintaining accurate detection, tracking, and pose estimation. The system currently achieves ~26 FPS processing speed with good accuracy.
+The project has successfully established a stable real-time processing pipeline and is now developing specialized biomechanical analysis applications. The current focus includes:
+
+1. **2D Squat Analysis**: Real-time knee flexion angle calculation and automatic squat repetition counting
+2. **Custom Visualization Systems**: Selective skeleton rendering for focused biomechanical analysis
+3. **Movement Validation**: Multi-frame validation systems for accurate movement detection
+
+The system currently achieves ~26 FPS processing speed with excellent accuracy and supports specialized analysis applications.
 
 ## Technical Requirements
 
@@ -55,5 +61,9 @@ The immediate focus is on establishing a stable real-time processing pipeline th
 - ✅ Multi-camera support with frame stitching
 - ✅ Performance optimization from volleyball project maintained
 - ✅ Comprehensive timing and profiling system
+- ✅ Specialized 2D squat analysis application (`lab_mocap_2Dsquat.py`)
+- ✅ Real-time knee flexion angle calculation and display
+- ✅ Automatic squat repetition counting with biomechanical validation
+- ✅ Custom skeleton visualization system with selective rendering
 - 🔄 Testing and validation in laboratory environment
-- 📋 Future: Joint angle calculation implementation
+- 📋 Future: Additional joint angle calculations and movement patterns

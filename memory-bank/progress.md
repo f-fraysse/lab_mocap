@@ -37,6 +37,30 @@
    - Real-time performance metrics displayed on stream
    - Comprehensive timing information for all pipeline components
 
+### ✅ Specialized Biomechanical Analysis Applications
+
+7. **2D Squat Analysis System (`lab_mocap_2Dsquat.py`)**
+   - **Knee Flexion Angle Calculation**: Real-time computation using hip-knee-ankle keypoints
+     - Custom formula: `180° - arccos(dot_product)` where 0° = straight leg
+     - Yellow text display with black background for visibility
+     - Only calculated when all three keypoints have confidence > 0.5
+   
+   - **Automatic Squat Repetition Counting**: Biomechanically-based rep detection
+     - Uses hip-knee vertical position comparison for squat validation
+     - 3-frame consecutive validation system prevents false positives
+     - State machine: STANDING → SQUAT_VALIDATED → REP_COMPLETED → STANDING
+     - Large green "SQUAT" indicator (270x100 pixels) during validated squats
+     - Enhanced rep counter with 50% larger text display
+
+8. **Custom Skeleton Visualization System**
+   - **`draw_skeleton_custom()` Function**: Selective keypoint and connection rendering
+     - Configurable keypoint selection (supports left leg only visualization)
+     - Customizable colors, line thickness, and keypoint sizes
+     - Efficient rendering with enhanced visibility options
+   - **Left Leg Focus**: Hip-knee-ankle visualization for squat analysis
+     - Larger keypoints (radius=5) and thicker lines (width=3) for better visibility
+     - Green color scheme for left leg components
+
 ### ✅ Performance Optimization
 
 1. **Batch Processing Implementation**

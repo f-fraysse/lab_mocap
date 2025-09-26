@@ -68,6 +68,62 @@ SELECTED_CAMERA = 1-4  # For single mode
 - CSV logging for detailed analysis
 - Frame-by-frame profiling data
 
+### 5. Specialized Biomechanical Analysis Pattern
+
+**Pattern**: Application-specific analysis modules built on core pipeline
+- **Base Pipeline**: Standard detection → tracking → pose estimation
+- **Analysis Layer**: Specialized calculations and visualizations
+- **Dual Functionality**: Multiple analysis types in single application
+
+**Example Implementation (`lab_mocap_2Dsquat.py`)**:
+```python
+# Knee angle calculation
+def calculate_knee_flexion_angle(hip, knee, ankle):
+    # Vector-based angle calculation
+    # Custom formula: 180° - arccos(dot_product)
+    
+# Squat repetition counting
+# State machine: STANDING → SQUAT_VALIDATED → REP_COMPLETED
+```
+
+### 6. Custom Visualization System
+
+**Pattern**: Selective and configurable skeleton rendering
+```python
+def draw_skeleton_custom(img, keypoints, scores, 
+                        selected_keypoints=None,
+                        selected_connections=None,
+                        kpt_thr=0.5, radius=3, line_width=2,
+                        keypoint_colors=None, connection_colors=None):
+```
+
+**Features**:
+- **Selective Rendering**: Choose specific keypoints and connections
+- **Configurable Appearance**: Custom colors, sizes, and line thickness
+- **Performance Optimized**: Only renders necessary elements
+- **Reusable**: Supports multiple analysis applications
+
+### 7. State Machine Pattern for Movement Analysis
+
+**Pattern**: Robust movement detection with validation
+```python
+# Squat detection state machine
+consecutive_squat_frames = 0
+in_squat_position = False
+SQUAT_VALIDATION_FRAMES = 3  # Prevent false positives
+
+# State transitions based on biomechanical criteria
+if hip_below_knee:
+    consecutive_squat_frames += 1
+    if consecutive_squat_frames >= SQUAT_VALIDATION_FRAMES:
+        in_squat_position = True
+```
+
+**Benefits**:
+- **False Positive Prevention**: Multi-frame validation
+- **Clear State Management**: Explicit state transitions
+- **Extensible**: Easy to add new movement patterns
+
 ## Technical Implementation Patterns
 
 ### 1. RTSP Stream Handling

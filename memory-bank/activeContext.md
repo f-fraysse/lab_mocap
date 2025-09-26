@@ -2,16 +2,17 @@
 
 ## Current Work Focus
 
-The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. The current focus is on **real-time RTSP stream processing** with integrated human pose estimation for biomechanical analysis.
+The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. The current focus is on **specialized biomechanical analysis applications** with real-time RTSP stream processing and integrated human pose estimation.
 
-### Primary Achievement
+### Primary Achievements
 
-Successfully created and tested `lab_mocap_stream.py` - a combined script that integrates:
-- RTSP camera stream capture (4 laboratory cameras)
-- RTMDet human detection
-- ByteTrack multi-object tracking  
-- RTMPose pose estimation with batch processing
-- Real-time display with performance monitoring
+1. **Successfully created and tested `lab_mocap_stream.py`** - Base RTSP streaming with HPE pipeline
+2. **Developed `lab_mocap_2Dsquat.py`** - Specialized 2D squat analysis application with:
+   - Real-time knee flexion angle calculation and display
+   - Automatic squat repetition counting based on hip-knee position analysis
+   - Enhanced visual feedback with large status indicators
+   - Custom left leg visualization (hip-knee-ankle only)
+   - 3-frame squat validation system for accuracy
 
 ### Current Performance Metrics
 
@@ -47,10 +48,33 @@ SELECTED_CAMERA = 1     # Which camera (1-4) for single mode
 ## Recent Changes
 
 1. **Created `lab_mocap_stream.py`**: Complete integration of RTSP streaming with HPE pipeline
-2. **Preserved All Optimizations**: Maintained batch processing and performance optimizations from volleyball project
-3. **Simplified Configuration**: Clean camera selection system (single/all modes only)
-4. **Updated Memory Bank**: Removed volleyball context, added biomechanics lab focus
-5. **Successful Testing**: Confirmed real-time performance with live RTSP streams
+2. **Developed `lab_mocap_2Dsquat.py`**: Specialized squat analysis application with dual functionality
+3. **Preserved All Optimizations**: Maintained batch processing and performance optimizations from volleyball project
+4. **Implemented Biomechanical Analysis**: Real-time knee angle calculation and squat repetition counting
+5. **Enhanced Visual Feedback**: Large status indicators and custom skeleton visualization
+6. **Added Custom Drawing System**: `draw_skeleton_custom()` function for selective keypoint display
+7. **Successful Testing**: Confirmed real-time performance with specialized analysis features
+
+## Squat Analysis Features (`lab_mocap_2Dsquat.py`)
+
+### Dual Analysis System
+- **Knee Flexion Angle**: Real-time calculation using hip-knee-ankle keypoints
+  - Formula: `180° - arccos(dot_product)` where 0° = straight leg
+  - Yellow text display near knee with black background
+  - Only calculated when all three keypoints have confidence > 0.5
+
+- **Squat Repetition Counter**: Automatic counting based on biomechanical criteria
+  - Uses hip-knee vertical position comparison
+  - 3-frame consecutive validation prevents false positives
+  - Large green "SQUAT" indicator (270x100 pixels) when validated
+  - Enhanced rep counter with 50% larger text
+
+### Technical Implementation Details
+- **Custom Skeleton Drawing**: `draw_skeleton_custom()` function with selective rendering
+- **State Machine Logic**: STANDING → SQUAT_VALIDATED → REP_COMPLETED → STANDING
+- **Error Handling**: Graceful handling of missing keypoints and calculation errors
+- **Performance**: Maintains ~26 FPS with additional analysis overhead
+- **Configuration**: Uses camera 4 in single mode for focused analysis
 
 ## Technical Implementation
 

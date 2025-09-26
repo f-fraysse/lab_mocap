@@ -14,6 +14,140 @@ from paths import MODEL_DIR, DATA_DIR, OUTPUT_VIDEO_DIR, OUTPUT_H5_DIR, ensure_o
 
 ensure_output_dirs()
 
+# COCO17 keypoint indices for left leg
+LEFT_HIP_IDX = 11
+LEFT_KNEE_IDX = 13
+LEFT_ANKLE_IDX = 15
+
+def calculate_knee_flexion_angle(hip, knee, ankle):
+    """
+    Calculate knee flexion angle from hip, knee, and ankle keypoints.
+    
+    Args:
+        hip: (x, y) coordinates of left hip
+        knee: (x, y) coordinates of left knee  
+        ankle: (x, y) coordinates of left ankle
+        
+    Returns:
+        angle_deg: Knee flexion angle in degrees (0° = straight leg, 90° = bent at 90°)
+    """
+    # Convert to numpy arrays for vector operations
+    hip = np.array(hip)
+    knee = np.array(knee)
+    ankle = np.array(ankle)
+    
+    # Calculate vectors from knee to hip and knee to ankle
+    vec1 = hip - knee  # knee to hip
+    vec2 = ankle - knee  # knee to ankle
+    
+    # Calculate angle using dot product
+    cos_angle = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    
+    # Clamp to avoid numerical errors
+    cos_angle = np.clip(cos_angle, -1.0, 1.0)
+    
+    # Calculate angle in radians then convert to degrees
+    angle_rad = np.arccos(cos_angle)
+    angle_deg = np.degrees(angle_rad)
+    angle_deg = round(180 - angle_deg)
+    
+    return angle_deg
+
+
+def draw_skeleton_custom(img, keypoints, scores, 
+                        selected_keypoints=None,
+                        selected_connections=None,
+                        kpt_thr=0.5,
+                        radius=3,
+                        line_width=2,
+                        keypoint_colors=None,
+                        connection_colors=None):
+    """
+    Custom skeleton drawing function with selective keypoint and connection display.
+    
+    Args:
+        img: Input image
+        keypoints: Array of keypoint coordinates [N, 17, 2] for COCO17
+        scores: Array of keypoint confidence scores [N, 17]
+        selected_keypoints: List of keypoint indices to draw (None = all)
+        selected_connections: List of connection tuples (idx1, idx2) to draw
+        kpt_thr: Confidence threshold for keypoints
+        radius: Keypoint circle radius
+        line_width: Connection line thickness
+        keypoint_colors: Dict of {keypoint_idx: (B,G,R)} colors
+        connection_colors: Dict of {(idx1,idx2): (B,G,R)} colors
+        
+    Returns:
+        img: Image with drawn skeleton
+    """
+    # Default COCO17 keypoint colors (left side green, right side orange)
+    default_kpt_colors = {
+        0: [51, 153, 255],   # nose
+        1: [51, 153, 255],   # left_eye
+        2: [51, 153, 255],   # right_eye
+        3: [51, 153, 255],   # left_ear
+        4: [51, 153, 255],   # right_ear
+        5: [0, 255, 0],      # left_shoulder
+        6: [255, 128, 0],    # right_shoulder
+        7: [0, 255, 0],      # left_elbow
+        8: [255, 128, 0],    # right_elbow
+        9: [0, 255, 0],      # left_wrist
+        10: [255, 128, 0],   # right_wrist
+        11: [0, 255, 0],     # left_hip
+        12: [255, 128, 0],   # right_hip
+        13: [0, 255, 0],     # left_knee
+        14: [255, 128, 0],   # right_knee
+        15: [0, 255, 0],     # left_ankle
+        16: [255, 128, 0]    # right_ankle
+    }
+    
+    # Default connection colors
+    default_conn_colors = {
+        (11, 13): [0, 255, 0],    # left_hip to left_knee
+        (13, 15): [0, 255, 0],    # left_knee to left_ankle
+    }
+    
+    # Use provided colors or defaults
+    kpt_colors = keypoint_colors if keypoint_colors else default_kpt_colors
+    conn_colors = connection_colors if connection_colors else default_conn_colors
+    
+    # If no specific keypoints selected, use all
+    if selected_keypoints is None:
+        selected_keypoints = list(range(17))
+    
+    # If no specific connections selected, use default left leg connections
+    if selected_connections is None:
+        selected_connections = [(11, 13), (13, 15)]  # hip-knee, knee-ankle
+    
+    num_instances = keypoints.shape[0]
+    
+    for i in range(num_instances):
+        kpts = keypoints[i]
+        kpt_scores = scores[i]
+        
+        # Draw connections first (so keypoints appear on top)
+        for (idx1, idx2) in selected_connections:
+            if (kpt_scores[idx1] > kpt_thr and kpt_scores[idx2] > kpt_thr and
+                idx1 in selected_keypoints and idx2 in selected_keypoints):
+                
+                pt1 = (int(kpts[idx1][0]), int(kpts[idx1][1]))
+                pt2 = (int(kpts[idx2][0]), int(kpts[idx2][1]))
+                
+                # Get connection color
+                conn_key = (idx1, idx2) if (idx1, idx2) in conn_colors else (idx2, idx1)
+                color = conn_colors.get(conn_key, [0, 255, 0])  # Default green
+                
+                cv2.line(img, pt1, pt2, color, line_width)
+        
+        # Draw keypoints
+        for idx in selected_keypoints:
+            if kpt_scores[idx] > kpt_thr:
+                pt = (int(kpts[idx][0]), int(kpts[idx][1]))
+                color = kpt_colors.get(idx, [0, 255, 0])  # Default green
+                cv2.circle(img, pt, radius, color, -1)
+    
+    return img
+
 #---------- CONFIGURATION ------------------
 # Camera Configuration
 CAMERA_MODE = "single"  # Options: "single", "all"
@@ -29,7 +163,7 @@ CAMERA_URLS = {
 
 # Data Logging (off by default)
 record_results = False
-OUT_H5_FILE = "lab_mocap_stream_data.h5"
+OUT_H5_FILE = "lab_mocap_2Dsquat_data.h5"
 
 # Timing Logging Configuration
 enable_timing_logs = False  # Set to False to disable CSV timing logs
@@ -205,6 +339,12 @@ global_start = time.time()
 csv_duration_ms = 0.0
 draw_duration_ms = 0.0
 
+# Squat tracking state variables
+squat_rep_count = 0
+consecutive_squat_frames = 0
+in_squat_position = False
+SQUAT_VALIDATION_FRAMES = 3  # Require 3 consecutive frames for squat validation
+
 try:
     while True:
         start_time = time.perf_counter()
@@ -297,18 +437,88 @@ try:
 
         hdf_time = time.perf_counter()
 
-        # Step 7: Drawing
-        # Draw skeletons
-        for keypoints, kpt_scores in zip(keypoints_list, scores_list):
-            img_show = draw_skeleton(
+        # Step 7: Drawing - Custom left leg visualization and squat tracking
+        for i, (keypoints, kpt_scores) in enumerate(zip(keypoints_list, scores_list)):
+            # Draw custom skeleton (left leg only)
+            img_show = draw_skeleton_custom(
                 img_show,
                 np.array([keypoints]),
                 np.array([kpt_scores]),
-                openpose_skeleton=False,
+                selected_keypoints=[LEFT_HIP_IDX, LEFT_KNEE_IDX, LEFT_ANKLE_IDX],
+                selected_connections=[(LEFT_HIP_IDX, LEFT_KNEE_IDX), (LEFT_KNEE_IDX, LEFT_ANKLE_IDX)],
                 kpt_thr=0.3,
-                radius=3,
-                line_width=2
+                radius=5,  # Larger keypoints for better visibility
+                line_width=3  # Thicker lines for better visibility
             )
+            
+            # Calculate and display knee flexion angle + squat tracking
+            hip_score = kpt_scores[LEFT_HIP_IDX]
+            knee_score = kpt_scores[LEFT_KNEE_IDX]
+            ankle_score = kpt_scores[LEFT_ANKLE_IDX]
+            
+            # Only calculate angle and track squat if all three keypoints are confident
+            if hip_score > 0.5 and knee_score > 0.5 and ankle_score > 0.5:
+                hip_pos = keypoints[LEFT_HIP_IDX]
+                knee_pos = keypoints[LEFT_KNEE_IDX]
+                ankle_pos = keypoints[LEFT_ANKLE_IDX]
+                
+                # Calculate knee flexion angle
+                try:
+                    knee_angle = calculate_knee_flexion_angle(hip_pos, knee_pos, ankle_pos)
+                    
+                    # Position angle text near the knee with offset
+                    text_x = int(knee_pos[0] + 20)
+                    text_y = int(knee_pos[1] - 10)
+                    
+                    # Ensure text stays within image bounds
+                    text_x = max(10, min(text_x, width - 150))
+                    text_y = max(30, min(text_y, height - 10))
+                    
+                    # Draw angle text with background for better visibility
+                    angle_text = f"{knee_angle:.0f} deg"
+                    
+                    # Get text size for background rectangle
+                    (text_width, text_height), baseline = cv2.getTextSize(
+                        angle_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+                    
+                    # Draw background rectangle
+                    cv2.rectangle(img_show, 
+                                (text_x - 5, text_y - text_height - 5),
+                                (text_x + text_width + 5, text_y + baseline + 5),
+                                (0, 0, 0), -1)  # Black background
+                    
+                    # Draw angle text
+                    cv2.putText(img_show, angle_text, (text_x, text_y),
+                              cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)  # Yellow text
+                    
+                except Exception as e:
+                    # Handle any calculation errors gracefully
+                    print(f"Error calculating knee angle: {e}")
+                
+                # Squat tracking based on hip-knee vertical position comparison
+                # Compare vertical positions (y-coordinates)
+                # Hip lower than knee means hip_y > knee_y (since y=0 is at top)
+                hip_below_knee = hip_pos[1] > knee_pos[1]
+                
+                if hip_below_knee:
+                    # Hip is below knee - potential squat position
+                    consecutive_squat_frames += 1
+                    
+                    if consecutive_squat_frames >= SQUAT_VALIDATION_FRAMES and not in_squat_position:
+                        # Squat validated after 3 consecutive frames
+                        in_squat_position = True
+                        print(f"Squat validated at frame {frame_id}")
+                        
+                else:
+                    # Hip is above knee - standing position
+                    if in_squat_position:
+                        # Coming up from squat - count repetition
+                        squat_rep_count += 1
+                        in_squat_position = False
+                        print(f"Squat rep #{squat_rep_count} completed at frame {frame_id}")
+                    
+                    # Reset consecutive frame counter
+                    consecutive_squat_frames = 0
 
         # Draw bboxes and ID labels
         for (x1, y1, x2, y2, track_id, score) in bbox_rects:
@@ -349,10 +559,20 @@ try:
         csv_time = time.perf_counter()
         current_csv_duration = (csv_time - csv_write_start_time) * 1000
 
+        # Draw squat status indicators in top-right corner
+        # Bright green rectangle when in validated squat position (twice as large)
+        if in_squat_position:
+            cv2.rectangle(img_show, (width - 280, 10), (width - 10, 110), (0, 255, 0), -1)  # Bright green filled rectangle (twice as large)
+            cv2.putText(img_show, "SQUAT", (width - 250, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 3)  # Black text (larger)
+        
+        # Repetition counter display (50% larger text)
+        rep_text = f"Reps: {squat_rep_count}"
+        cv2.putText(img_show, rep_text, (width - 200, 140), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # White text (50% larger)
+
         # Draw timing overlays
-        img_show = cv2.putText(img_show, f'Biomechanics Lab - Human Pose Estimation - FRANCOIS FRAYSSE @ UniSA', (10, 30), 
+        img_show = cv2.putText(img_show, f'Biomechanics Lab - 2D Squat Rep Counter - FRANCOIS FRAYSSE @ UniSA', (10, 30), 
                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 0), 2)
-        img_show = cv2.putText(img_show, f'Mode: {CAMERA_MODE.upper()}', (10, 50), 
+        img_show = cv2.putText(img_show, f'Camera {SELECTED_CAMERA} - Squat Repetition Tracking', (10, 50), 
                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 0), 2)
         img_show = cv2.putText(img_show, f'cap: {cap_duration:.1f} ms', (10, 80), 
                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -376,7 +596,7 @@ try:
                               (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
         # Display frame
-        cv2.imshow('Lab MoCap Stream', img_show)
+        cv2.imshow('Lab MoCap - 2D Squat Analysis', img_show)
         
         draw_time = time.perf_counter()
         current_draw_duration = (draw_time - csv_time) * 1000
