@@ -1,4 +1,4 @@
-# Technical Context: HPE_volleyball
+# Technical Context: Lab MoCap
 
 ## Technologies Used
 
@@ -8,27 +8,26 @@
    - Part of the OpenMMLab ecosystem
    - State-of-the-art models for object detection and pose estimation
    - Accessed through RTMlib Python package
+   - Modified for batch processing optimization
 
-2. **Ultralytics YOLO (Alternative Implementation)**
-   - YOLOv8/YOLO11 models for object detection and pose estimation
-   - Python API for easy integration
-   - Explored as an alternative to RTMDet/RTMPose
-
-3. **ByteTrack**
+2. **ByteTrack**
    - State-of-the-art multi-object tracking algorithm
    - Modified version included in the project repository
+   - Optimized for laboratory environment tracking
 
-4. **ONNX Runtime**
+3. **ONNX Runtime**
    - Cross-platform inference engine for ONNX models
    - Used with CUDA backend for GPU acceleration
+   - Enables real-time processing performance
 
-5. **OpenCV (cv2)**
-   - Used for video I/O, image processing, and visualization
-   - Handles frame extraction and output video generation
+4. **OpenCV (cv2)**
+   - Used for RTSP stream handling, image processing, and visualization
+   - Handles real-time frame capture and display
+   - Frame stitching for multi-camera configurations
 
-6. **HDF5 (h5py)**
+5. **HDF5 (h5py)**
    - Hierarchical data format for storing structured numerical data
-   - Used to store detection, tracking, and pose results
+   - Used to store detection, tracking, and pose results (optional)
 
 ### Programming Languages
 
@@ -45,52 +44,54 @@
 
 ### Environment
 
-- **Conda Environment**: `HPE_volleyball`
+- **Conda Environment**: `lab_mocap`
 - **Python Version**: 3.10
 - **IDE**: Visual Studio Code
 
 ### Hardware
 
-- **Development Machine**: Home PC with RTX 5070
-- **Target Machine**: Lab PC with RTX 4060
-- **Previous Testing**: GTX 1070 Ti
+- **Target Hardware**: CUDA-capable GPU for real-time processing
+- **Camera Setup**: 4 RTSP cameras positioned around laboratory space
+- **Network**: Laboratory network supporting RTSP streaming
 
 ### Repository Structure
 
 ```
-HPE_volleyball/
+lab_mocap/
 ├── ByteTrack/           # Forked + modified ByteTrack repo (tracking)
-├── rtmlib/              # Modified RTMlib with profiling capabilities
-├── models/              # model files (.onnx) for RTMPose and RTMDet
-├── data/                # Input videos
+├── rtmlib/              # Modified RTMlib with batch processing and profiling
+├── models/              # Model files (.onnx) for RTMPose and RTMDet
+├── data/                # Sample data (if any)
 ├── output/
 │   ├── h5/              # HDF5 outputs: IDs, bboxes, keypoints, scores
-│   └── video/           # Output videos with overlays
+│   └── video/           # Video outputs (if recording enabled)
 ├── profiling_logs/      # CSV logs of detailed timing data
-├── scripts/             # Custom scripts (main pipeline, helpers)
+├── scripts/             # Main processing scripts
+│   └── lab_mocap_stream.py  # Primary real-time processing script
+├── memory-bank/         # Project documentation and context
 ├── paths.py             # Project-relative path definitions
 └── requirements.txt     # Python dependencies
 ```
 
 ### Key Dependencies
 
-- **rtmlib**: Wrapper for RTMDet and RTMPose models
+- **rtmlib**: Modified wrapper for RTMDet and RTMPose models
 - **onnxruntime-gpu**: GPU-accelerated inference engine
-- **h5py**: HDF5 file interface
-- **opencv-python**: Computer vision operations
+- **h5py**: HDF5 file interface (for optional data logging)
+- **opencv-python**: Computer vision operations and RTSP handling
 - **numpy**: Numerical operations
 
 ## Technical Constraints
 
 ### Hardware Constraints
 
-1. **GPU Memory**
-   - RTX 4060 (target machine) has 8GB VRAM
-   - Must optimize memory usage for model inference
+1. **GPU Requirements**
+   - CUDA-capable GPU required for real-time performance
+   - Sufficient VRAM for model inference (typically 4GB+)
 
-2. **Compute Power**
-   - Need to balance model size/accuracy with inference speed
-   - Target: Process video faster than real-time (>50 FPS)
+2. **Network Requirements**
+   - Stable network connection for RTSP streams
+   - Sufficient bandwidth for 4 simultaneous camera streams
 
 ### Software Constraints
 
@@ -98,51 +99,64 @@ HPE_volleyball/
    - CUDA version must be compatible with GPU driver
    - ONNX Runtime must be compatible with CUDA version
    - cuDNN version must be compatible with CUDA
-   - **RTX 5070 GPU Compatibility Issue**: The development machine's RTX 5070 has CUDA capability sm_120, but current PyTorch builds only support up to sm_90, limiting GPU acceleration options
 
 2. **ONNX Runtime Limitations**
    - Some operations may be assigned to CPU instead of GPU
-   - Need to investigate and optimize model operations
+   - Optimization ongoing for maximum GPU utilization
 
 3. **RTMlib Modifications**
    - Local copy of RTMlib included in the repository
+   - Modified for batch processing optimization
    - Modified to include detailed profiling capabilities
-   - Modified to output bbox scores for tracking
    - Installed in development mode for easy modification
-   - Modified `RTMPose` and `BaseTool` for batch pose estimation
-
-4. **YOLO Implementation Limitations**
-   - Alternative YOLO-based implementation significantly slower than RTMDet/RTMPose (~1.9 FPS vs. ~26 FPS)
-   - TensorRT acceleration attempts failed due to GPU compatibility issues
-   - Per-person pose estimation approach was even slower (0.7 FPS) than whole-frame approach
 
 ### Performance Constraints
 
-1. **Detection Time**: ~19 ms/frame (Target: < 8ms for 50 FPS goal)
-2. **Pose Estimation Time**: ~11 ms/frame (Target: < 7ms for 50 FPS goal)
-3. **Total Processing**: ~26 FPS. Target is **50 FPS (20ms/frame)**. Initial 15-20 FPS target met.
+Current performance metrics (live RTSP streams):
+- **Total Processing**: ~38ms/frame (~26 FPS)
+- **Detection**: ~21.8ms/frame (primary component)
+- **Pose Estimation**: ~1.9ms/frame (highly optimized)
+- **Stream Capture**: ~12.4ms/frame (includes RTSP latency)
+
+## Laboratory Setup
+
+### Camera Configuration
+
+1. **RTSP Cameras**: 4 cameras with network streaming capability
+2. **Camera URLs**: Configured for laboratory network
+3. **Positioning**: Strategic placement around laboratory space
+4. **Resolution**: Typically 1920x1080 per camera
+
+### Processing Modes
+
+1. **Single Camera Mode**
+   - Process one selected camera (1-4)
+   - Full resolution processing
+   - Optimal for focused analysis
+
+2. **Multi-Camera Mode**
+   - Process all 4 cameras simultaneously
+   - Automatic frame stitching into 2x2 grid
+   - Comprehensive coverage of laboratory space
 
 ## Dependencies and Installation
 
 ### Prerequisites
 
-1. **C++ Build Tools for Visual Studio**
-   - Required to build Cython wheels
-
-2. **CUDA Toolkit**
+1. **CUDA Toolkit**
    - Compatible with GPU driver
-   - Currently tested with CUDA 12.4 and 12.6
+   - Required for GPU acceleration
 
-3. **cuDNN**
+2. **cuDNN**
    - Compatible with CUDA version
-   - Currently tested with cuDNN 9.7 and 9.8
+   - Required for optimal performance
 
 ### Installation Steps
 
 1. **Create and activate conda environment**
    ```bash
-   conda create -n HPE-volleyball python=3.10
-   conda activate HPE-volleyball
+   conda create -n lab_mocap python=3.10
+   conda activate lab_mocap
    ```
 
 2. **Install dependencies**
@@ -163,71 +177,63 @@ HPE_volleyball/
    pip install -e .
    cd ..
    ```
-   - Installs the included RTMlib in development mode
-   - Modifications for bbox scores and profiling already implemented
 
 ## Development Workflow
 
-1. **Model Selection**
-   - Download ONNX models from OpenMMLab Deploee
-   - Place in `/models` directory
+1. **Configuration**
+   - Edit camera configuration in `scripts/lab_mocap_stream.py`
+   - Set camera mode (single/all) and selected camera
 
-2. **Data Preparation**
-   - Place input videos in `/data` directory
+2. **Model Setup**
+   - Ensure ONNX models are in `/models` directory
+   - RTMDet-m and RTMPose-m models required
 
-3. **Configuration**
-   - Edit configuration section in `scripts/MAIN.py`
+3. **Execution**
+   - Run `python scripts/lab_mocap_stream.py`
+   - Monitor real-time performance metrics
 
-4. **Execution**
-   - Run `scripts/MAIN.py`
-
-5. **Output Analysis**
-   - Check output videos in `/output/video`
-   - Analyze data in `/output/h5`
+4. **Data Analysis**
+   - Optional HDF5 data logging for offline analysis
+   - Performance profiling data in CSV format
 
 ## Performance Profiling
 
-Detailed profiling has been implemented to identify bottlenecks in the inference pipeline:
+Comprehensive profiling system implemented:
 
-1. **Profiling Implementation**
-   - Modified RTMlib to include detailed timing measurements
-   - Added timing for preprocessing, inference, and postprocessing
-   - Implemented CSV logging of all timing data
-   - Added summary statistics output
+1. **Real-time Monitoring**
+   - Performance metrics displayed on live video stream
+   - Component-level timing (capture, detection, tracking, pose)
+   - Overall FPS calculation
 
-2. **Profiled Components**
-   - **Preprocessing Time**
-     - Image resizing
-     - Normalization
-     - Data format conversions
-   - **ONNX Session Time**
-     - Actual model inference time
-     - GPU operation time
-   - **Postprocessing Time**
-     - Decoding model outputs
-     - Non-maximum suppression
-     - Coordinate transformations
-   - **Overhead**
-     - Memory transfers between CPU and GPU
-     - API call overhead
-     - Data structure conversions
+2. **Detailed Logging**
+   - CSV logs with per-frame timing data
+   - Internal model profiling (preprocess, inference, postprocess)
+   - Statistical analysis (min/max/average/median)
 
-3. **Data Collection**
-   - CSV logs stored in `/profiling_logs/` directory
-   - Each run generates a timestamped CSV file
-   - Contains per-frame timing data for all components
-   - Summary statistics printed at the end of processing
+3. **Optimization Tracking**
+   - Batch processing implementation for pose estimation
+   - GPU utilization monitoring
+   - Bottleneck identification
 
 ## Future Technical Considerations
 
-1. **Automated Pipeline**
-   - File system monitoring for new videos
-   - Automatic processing trigger
+1. **Joint Angle Calculation**
+   - Implementation of biomechanical analysis from pose keypoints
+   - Integration with existing pose estimation pipeline
 
-2. **Action Recognition**
-   - Temporal modeling of pose sequences
-   - Classification of volleyball-specific actions
+2. **Advanced Analytics**
+   - Movement pattern analysis
+   - Comparative studies support
+   - Longitudinal tracking capabilities
 
-3. **Deployment**
-   - Packaging for non-technical users
-   - Simplified installation process
+3. **Laboratory Integration**
+   - Integration with existing laboratory data systems
+   - Export formats for biomechanical analysis tools
+   - Automated data collection workflows
+
+4. **Performance Optimization**
+   - Further GPU optimization
+   - Stream processing improvements
+   - Multi-threading for camera handling
+
+The system is designed for real-time biomechanical analysis with emphasis on performance, reliability, and research integration.

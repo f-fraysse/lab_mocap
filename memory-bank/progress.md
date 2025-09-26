@@ -1,196 +1,183 @@
-# Project Progress: HPE_volleyball
+# Project Progress: Lab MoCap
 
 ## What Works
 
-### ✅ Core Pipeline
+### ✅ Real-time RTSP Processing Pipeline
 
-1. **Video Input**
-   - Successfully reads video files using OpenCV
-   - Handles standard 1920x1080, 50fps volleyball training videos
-   - Frame extraction is efficient (~5-6ms per frame)
+1. **RTSP Stream Capture**
+   - Successfully connects to and processes 4 laboratory RTSP camera streams
+   - Handles individual camera failures gracefully
+   - Efficient frame capture with error recovery (~12.4ms average including latency)
 
-2. **Player Detection**
-   - RTMDet model successfully detects players in frames
-   - Medium-sized model (RTMDet-m) provides good accuracy
-   - Detection works reliably even with partial occlusions
-   - **Current performance: ~19ms per frame** (Post-normalization optimization). Detection runs every frame.
+2. **Camera Configuration System**
+   - Clean configuration-driven camera management
+   - Single camera mode: Process one selected camera (1-4)
+   - Multi-camera mode: Process all 4 cameras with automatic 2x2 stitching
+   - Dynamic resource allocation based on selected mode
 
-3. **Player Tracking**
-   - ByteTrack algorithm successfully maintains player IDs
-   - Handles occlusions and crossing paths effectively
-   - Very efficient performance (~1ms per frame)
-   - Consistent ID assignment throughout video sequences
+3. **Human Detection**
+   - RTMDet model successfully detects humans in laboratory environment
+   - Medium-sized model (RTMDet-m) provides good accuracy for biomechanics applications
+   - **Current performance: ~21.8ms per frame** (optimized preprocessing)
 
-4. **Pose Estimation**
-   - RTMPose model successfully estimates player poses
-   - Medium-sized model (RTMPose-m) provides good accuracy
-   - Correctly identifies keypoints for volleyball-specific poses
-   - **Current performance: ~11ms per frame** (Post-batching optimization)
+4. **Subject Tracking**
+   - ByteTrack algorithm successfully maintains subject IDs
+   - Handles occlusions and multiple subjects effectively
+   - Very efficient performance (~0.1ms per frame)
+   - Consistent ID assignment throughout sessions
 
-5. **Output Generation**
-   - Visual output with overlaid bounding boxes, IDs, and pose skeletons
-   - HDF5 data storage with structured organization
-   - Track presence indexing for efficient data retrieval
+5. **Pose Estimation**
+   - RTMPose model successfully estimates human poses in real-time
+   - Medium-sized model (RTMPose-m) provides accurate keypoint detection
+   - **Current performance: ~1.9ms per frame** (batch processing optimization)
+   - Suitable for biomechanical analysis applications
+
+6. **Real-time Display and Monitoring**
+   - Live video display with pose overlays and bounding boxes
+   - Real-time performance metrics displayed on stream
+   - Comprehensive timing information for all pipeline components
+
+### ✅ Performance Optimization
+
+1. **Batch Processing Implementation**
+   - RTMPose modified for batch inference of all detected subjects
+   - Significant performance improvement over individual processing
+   - Maintains accuracy while improving speed
+
+2. **Comprehensive Profiling System**
+   - Real-time performance monitoring with on-screen display
+   - Detailed CSV logging of all timing components
+   - Statistical analysis (min/max/average/median) for performance assessment
+
+3. **GPU Acceleration**
+   - ONNX Runtime with CUDA backend for optimal performance
+   - Efficient memory management and resource utilization
 
 ### ✅ Development Environment
 
-1. **Conda Environment**
-   - Successfully configured with all dependencies
-   - Python 3.10 environment with required packages
-   - CUDA and cuDNN properly installed and configured
+1. **Laboratory Integration**
+   - Configured for biomechanics laboratory camera setup
+   - RTSP stream handling optimized for laboratory network
+   - Flexible configuration for different research scenarios
 
-2. **Model Management**
-   - ONNX models properly loaded and executed
-   - GPU acceleration working through ONNX Runtime
-   - Model paths properly configured through paths.py
-
-3. **Project Structure**
-   - Organized directory structure for models, data, and output
-   - Clear separation of concerns in code organization
-   - Path management through centralized paths.py
+2. **Project Structure**
+   - Clean separation between old volleyball code and new lab mocap system
+   - Centralized configuration management
+   - Proper resource cleanup and error handling
 
 ## What's Left to Build
 
-### 🔄 Current Focus: Performance Optimization
+### 🔄 Current Focus: Laboratory Validation and Enhancement
 
-1. **Detailed Profiling** ✅
-   - Implemented detailed timing measurements for each component
-   - Added breakdown of preprocessing, inference, and postprocessing times
-   - Added CSV logging of all timing data
-   - Added summary statistics output
+1. **Laboratory Environment Testing** 🔄
+   - Validate performance with actual biomechanical movements
+   - Test system stability under various laboratory conditions
+   - Optimize camera positioning for optimal coverage
 
-2. **RTMlib Integration & Modification** ✅
-   - Switched from using RTMlib as an installed package to a local editable copy.
-   - Modified RTMlib to include detailed timing measurements.
-   - Included the modified RTMlib in the project repository.
-   - Updated installation instructions in README.md.
-   - Modified `RTMPose` and `BaseTool` for batch pose estimation.
+2. **Joint Angle Calculation** 📋
+   - Implement biomechanical analysis from pose keypoints
+   - Calculate lower limb joint angles from RTMPose output
+   - Integrate with existing pose estimation pipeline
 
-3. **Preprocessing Optimization** ✅
-   - Optimized normalization using OpenCV functions in both `RTMDet` and `RTMPose`.
-   - Reduced preprocessing time significantly.
+3. **Advanced Data Analysis** 📋
+   - Movement pattern analysis capabilities
+   - Comparative study support
+   - Longitudinal tracking and analysis
 
-4. **Batch Pose Estimation** ✅
-   - Implemented batch processing in `RTMPose`.
-   - Reduced pose estimation time from ~20ms to ~11ms per frame.
+### 🔜 Future Enhancements
 
-5. **Detection Frequency Reduction Experiment** 🟡 (Reverted)
-   - Explored running detection every N frames.
-   - Encountered tracking accuracy issues (flickering, lost tracks).
-   - Reverted `scripts/MAIN.py` to run detection every frame for robustness.
+1. **Laboratory Workflow Integration**
+   - Integration with existing laboratory data collection systems
+   - Export formats compatible with biomechanical analysis tools
+   - Automated data collection and processing workflows
 
-6. **Profiling Refactoring** ✅
-   - Cleaned up timing measurements in `scripts/MAIN.py`.
-   - Added specific timings for CSV write and final display steps.
-   - Updated on-screen/CSV/terminal outputs for clarity and consistency.
-   - Ensured terminal statistics exclude the first frame and use tab alignment.
+2. **Advanced Analytics**
+   - Movement quality assessment
+   - Comparative analysis between subjects
+   - Temporal analysis of movement patterns
 
-7. **Implementation of Further Optimization Strategies** 🔄
-   - Explore GPU accelerated capture/preprocessing - **Next Priority**
-   - Explore Model Quantization (FP16/INT8)
-   - Further minor detection optimization (Low priority)
-
-8. **YOLO-based Alternative Implementation** 🟡
-   - Created `scripts/MAIN_YOLO.py` with the same pipeline structure
-   - Implemented detection using YOLOv8/YOLO11 models
-   - Integrated ByteTrack for tracking
-   - Implemented pose estimation using YOLOv8/YOLO11-pose models
-   - Performance significantly slower than RTMDet/RTMPose (~1.9 FPS vs. ~26 FPS)
-   - Encountered GPU compatibility issues with RTX 5070 (CUDA capability sm_120)
-
-### 🔜 Future Work: Action Recognition
-
-1. **Temporal Analysis**
-   - Develop methods to analyze pose sequences over time
-   - Implement sliding window approach for action detection
-   - Create temporal features from pose data
-
-2. **Action Classification**
-   - Define volleyball-specific actions (spike, serve, block, etc.)
-   - Develop classification model for action recognition
-   - Train and evaluate on volleyball pose sequences
-
-3. **Action Visualization**
-   - Enhance output video with action labels
-   - Create timeline visualization of detected actions
-   - Generate action summary statistics
-
-### 🔜 Future Work: Automated Pipeline
-
-1. **File System Monitoring**
-   - Implement automatic detection of new video files
-   - Create trigger mechanism for processing new videos
-   - Develop queue management for multiple videos
-
-2. **Background Processing**
-   - Run processing as a background service
-   - Implement logging and error handling
-   - Create notification system for completed processing
-
-3. **Results Dashboard**
-   - Develop interface for reviewing processed videos
-   - Create visualization tools for pose and action data
-   - Implement filtering and search capabilities
+3. **System Optimization**
+   - Further performance improvements if needed
+   - Enhanced error handling and recovery
+   - Multi-threading for camera stream handling
 
 ## Current Status
 
 ### 🟢 Working Features
 
-- ✅ Video frame extraction
-- ✅ Player detection with RTMDet
-- ✅ Player tracking with ByteTrack
-- ✅ Pose estimation with RTMPose
-- ✅ Visual output generation
-- ✅ HDF5 data storage
-
-### 🟢 Working Features
-
-- ✅ Video frame extraction
-- ✅ Player detection with RTMDet (every frame)
-- ✅ Player tracking with ByteTrack
+- ✅ RTSP stream capture and processing
+- ✅ Multi-camera configuration system
+- ✅ Real-time human detection with RTMDet
+- ✅ Subject tracking with ByteTrack
 - ✅ Pose estimation with RTMPose (batch processing)
-- ✅ Visual output generation
-- ✅ HDF5 data storage
-- ✅ Performance profiling (Ongoing)
+- ✅ Real-time display with performance monitoring
+- ✅ Optional HDF5 data logging
+- ✅ Comprehensive performance profiling
 
 ### 🟡 In Progress
 
-- 🔄 Analyzing profiling results (Ongoing)
-- 🔄 Exploring further optimization strategies (GPU Preprocessing, Quantization)
+- 🔄 Laboratory environment validation
+- 🔄 Performance monitoring under various conditions
+- 🔄 System stability assessment
 
-### 🔴 Known Issues
+### 🟢 Ready for Enhancement
 
-1. **Detection Bottleneck**
-   - Detection stage (~19ms) is now the primary bottleneck limiting FPS.
-
-2. **ONNX Runtime Warnings**
-   - Warnings about operations potentially being assigned to CPU persist. Impact unclear.
+- 📋 Joint angle calculation implementation
+- 📋 Advanced biomechanical analysis features
+- 📋 Laboratory workflow integration
 
 ## Performance Metrics
 
-| Metric          | Avg Time (ms) | Target (ms) | Status                 | Notes                                      |
-|-----------------|---------------|-------------|------------------------|--------------------------------------------|
-| Detection Time  | ~19           | < 8         | Needs Improvement      | Post-normalization optimization          |
-| Tracking Time   | ~1            | < 1         | 🟢 Optimal             | ByteTrack                                  |
-| Pose Time       | ~11           | < 7         | Needs Improvement      | Batch processing implemented             |
-| **Total FPS**   | **~26**       | **50 (20ms)** | **Needs Improvement**  | Baseline after batch pose estimation     |
-| GPU Memory      | Not measured  | <8GB        | 🟡 To Be Assessed       |                                            |
-| CPU Usage       | Not measured  | <50%        | 🟡 To Be Assessed       |                                            |
+Current performance with live RTSP streams:
 
+| Component       | Avg Time (ms) | Performance Status | Notes                                    |
+|-----------------|---------------|-------------------|------------------------------------------|
+| **Total**       | **38.0**      | **🟢 Excellent**  | **~26 FPS - Real-time performance**     |
+| Stream Capture  | 12.4          | 🟢 Good           | Includes RTSP network latency           |
+| Detection       | 21.8          | 🟢 Good           | Primary processing component            |
+| Tracking        | 0.1           | 🟢 Optimal        | Very efficient ByteTrack               |
+| Pose Estimation | 1.9           | 🟢 Excellent      | Highly optimized batch processing      |
+| Display/Logging | 1.2           | 🟢 Optimal        | Minimal overhead                       |
+
+### System Requirements Met
+
+- ✅ Real-time processing (>20 FPS target exceeded)
+- ✅ Multi-camera support with flexible configuration
+- ✅ Robust RTSP stream handling
+- ✅ Laboratory environment compatibility
+- ✅ Performance monitoring and profiling
+
+## Project Transition Status
+
+### ✅ Completed Transition
+
+- ✅ Successfully migrated from volleyball HPE to lab mocap system
+- ✅ Integrated RTSP streaming with optimized HPE pipeline
+- ✅ Updated all memory bank documentation for lab context
+- ✅ Created primary processing script (`lab_mocap_stream.py`)
+- ✅ Validated real-time performance with live streams
+
+### 🔄 Cleanup in Progress
+
+- 🔄 Memory bank consistency verification
+- 🔄 Removal of unused volleyball-specific scripts
+- 🔄 Final project organization
 
 ## Next Milestone
 
-**Explore Further Optimization Strategies (GPU Preprocessing / Quantization)**
+**Laboratory Validation and Joint Angle Implementation**
 
-**Previous Milestone:** Profiling Refactoring & Documentation Update ✅
-- Refactored performance profiling in `scripts/MAIN.py`.
-- Updated `README.md` and Memory Bank (`activeContext.md`, `progress.md`).
+**Current Achievement**: Successfully created and tested real-time lab mocap system ✅
 
-**Current Task**: Investigate alternative optimization methods like GPU-accelerated preprocessing or model quantization to reach the 50 FPS target.
-
-**Target Completion**: TBD
+**Next Focus**: 
+1. Validate system performance in actual laboratory biomechanical studies
+2. Implement joint angle calculation from pose keypoints
+3. Develop advanced biomechanical analysis features
 
 **Success Criteria**:
-- Identify viable alternative optimization techniques.
-- Implement and evaluate the most promising technique(s).
-- Achieve further progress towards the 50 FPS target.
+- Reliable operation during actual laboratory sessions
+- Accurate joint angle calculations for biomechanical analysis
+- Integration with laboratory research workflows
+- Demonstration of research value for biomechanics applications
+
+The Lab MoCap system is now fully operational and ready for biomechanical research applications, with excellent real-time performance and comprehensive monitoring capabilities.

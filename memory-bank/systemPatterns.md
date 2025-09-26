@@ -1,187 +1,174 @@
-# System Patterns: HPE_volleyball
+# System Patterns: Lab MoCap
 
-## System Architecture
+## Architecture Overview
 
-The HPE_volleyball system follows a sequential pipeline architecture with distinct stages for processing video data. Each stage builds upon the previous one, creating a flow of increasingly refined information.
+The Lab MoCap system follows a modular real-time processing pipeline designed for biomechanics laboratory environments. The architecture maintains the optimized patterns from the volleyball project while adapting to RTSP stream processing.
 
-```mermaid
-flowchart TD
-    A[Video Input] --> B[Frame Extraction]
-    B --> C[Player Detection]
-    C --> D[Player Tracking]
-    D --> E[Pose Estimation]
-    E --> F1[Visual Output]
-    E --> F2[Structured Data Output]
-    
-    subgraph "Future Components"
-        F2 --> G[Action Recognition]
-        G --> H[Analysis & Insights]
-    end
+## Core Pipeline Architecture
+
+```
+RTSP Stream Capture → Camera Management → Detection → Tracking → Pose Estimation → Display/Logging
 ```
 
-## Core Components
+### Processing Flow
+1. **Stream Capture**: Multi-camera RTSP stream handling with error recovery
+2. **Camera Management**: Dynamic initialization based on configuration mode
+3. **Frame Processing**: Single camera or multi-camera stitching
+4. **Detection**: RTMDet human detection with GPU acceleration
+5. **Tracking**: ByteTrack multi-object tracking with ID persistence
+6. **Pose Estimation**: RTMPose batch processing for efficiency
+7. **Output**: Real-time display with performance overlays
 
-### 1. Video Input & Frame Extraction
+## Key Design Patterns
 
-- Uses OpenCV (`cv2.VideoCapture`) to read video frames
-- Processes standard 1920x1080, 50fps video input
-- Currently reads from local files in `/data/` directory
-- Future: Will automatically detect and process new videos
+### 1. Configuration-Driven Camera Management
 
-### 2. Player Detection
-
-- **Model**: RTMDet (from OpenMMLab)
-- **Format**: ONNX model running on ONNX Runtime with CUDA backend
-- **Input**: Full video frames
-- **Output**: Bounding boxes with confidence scores
-- **Implementation**: Uses RTMlib's RTMDet wrapper
-- **Process Flow**:
-  - Preprocessing (resize, normalize)
-  - ONNX inference session
-  - Postprocessing (decode predictions, NMS)
-
-### 3. Player Tracking
-
-- **Algorithm**: ByteTrack
-- **Purpose**: Maintains consistent player IDs across frames
-- **Input**: Detection bounding boxes and scores
-- **Output**: Tracked objects with consistent IDs
-- **Performance**: Very efficient (~1ms per frame)
-
-### 4. Pose Estimation
-
-- **Model**: RTMPose (from OpenMMLab)
-- **Format**: ONNX model running on ONNX Runtime with CUDA backend
-- **Input**: **Batch** of cropped images from tracked bounding boxes
-- **Output**: Keypoint coordinates and confidence scores
-- **Implementation**: Uses RTMlib's RTMPose wrapper (**modified for batch processing**)
-- **Process Flow**:
-  - **Batch** Preprocessing (crop, resize, normalize for all boxes)
-  - **Single** ONNX inference session for the batch
-  - **Batch** Postprocessing (decode keypoints for all boxes)
-
-### 5. Output Generation
-
-- **Visual Output**: OpenCV-rendered video with overlaid bounding boxes, IDs, and pose skeletons
-- **Data Storage**: HDF5 file format for structured storage of:
-  - Track IDs
-  - Bounding boxes
-  - Bounding box scores
-  - Keypoints
-  - Keypoint scores
-  - Track presence index (which frames contain which tracks)
-
-## Data Flow
-
-```mermaid
-flowchart LR
-    A[Raw Video] --> B[Frame]
-    B --> C[Detections]
-    C --> D[Tracked Objects]
-    D --> E[Pose Keypoints]
-    
-    E --> F[HDF5 Storage]
-    E --> G[Visualization]
+**Pattern**: Centralized configuration with dynamic resource allocation
+```python
+CAMERA_MODE = "single" | "all"
+SELECTED_CAMERA = 1-4  # For single mode
 ```
 
-## Key Technical Decisions
+**Implementation**:
+- `initialize_cameras()`: Dynamic camera initialization
+- `capture_frame()`: Mode-aware frame capture
+- `release_cameras()`: Proper resource cleanup
 
-### 1. Model Selection
+### 2. Modular Frame Processing
 
-- **RTMDet & RTMPose**: Selected for balance of accuracy and speed
-- **Model Sizes**: Medium-sized models chosen as baseline (RTMDet-m, RTMPose-m)
-- **Rationale**: Provides good accuracy while maintaining reasonable inference speed
+**Pattern**: Flexible frame handling based on camera configuration
+- **Single Mode**: Direct frame processing from selected camera
+- **All Mode**: Automatic frame stitching into 2x2 grid (1920x1080)
 
-### 2. Inference Backend
+**Benefits**:
+- Clean separation of concerns
+- Easy mode switching
+- Consistent processing pipeline regardless of input configuration
 
-- **ONNX Runtime with CUDA**: Chosen for cross-platform compatibility and GPU acceleration
-- **Alternatives Considered**: TensorRT (faster but more complex), PyTorch (simpler but slower)
-- **Rationale**: ONNX provides a good balance of performance and ease of deployment
+### 3. Optimized Pose Estimation Pipeline
 
-### 3. Tracking Algorithm
+**Pattern**: Batch processing for GPU efficiency (inherited from volleyball project)
+- Collect all detected bounding boxes per frame
+- Process entire batch in single RTMPose inference call
+- Significantly reduces GPU overhead
 
-- **ByteTrack**: Selected for its state-of-the-art performance and efficiency
-- **Alternatives Considered**: DeepSORT, SORT, MOTDT
-- **Rationale**: ByteTrack handles occlusions better and maintains ID consistency
+**Performance Impact**:
+- Pose estimation: ~1.9ms average (vs ~11ms in volleyball project)
+- Maintains accuracy while improving speed
 
-### 4. Data Storage Format
+### 4. Comprehensive Performance Profiling
 
-- **HDF5**: Chosen for efficient storage of hierarchical numerical data
-- **Alternatives Considered**: JSON (less efficient for numerical data), CSV (lacks hierarchical structure)
-- **Rationale**: HDF5 provides efficient storage and retrieval of structured numerical data
+**Pattern**: Multi-level timing analysis
+- **Component-level**: Overall pipeline timing (capture, detection, tracking, etc.)
+- **Internal-level**: Detailed model timing (preprocess, inference, postprocess)
+- **Statistical Analysis**: Min/max/average/median calculations
 
-## Performance Considerations
+**Implementation**:
+- Real-time display overlays
+- CSV logging for detailed analysis
+- Frame-by-frame profiling data
 
-**Baseline Performance (Post-Normalization Optimizations, Pre-Batching):**
-*   Detection Stage: ~17 ms/frame
-*   Pose Estimation Stage: ~20 ms/frame (sequential processing)
-*   Overall: ~22 FPS
+## Technical Implementation Patterns
 
-**Current Performance (Post-Batch Pose Estimation):**
-*   Detection Stage: ~19 ms/frame (stable)
-*   Pose Estimation Stage: **~11 ms/frame** (significant improvement due to batching)
-*   Overall: **~26 FPS**
+### 1. RTSP Stream Handling
 
-Current performance profiling focus:
-
-1. **Detailed Profiling**: Breaking down the time spent in each component of the inference pipeline:
-   - Preprocessing time
-   - Actual ONNX session inference time
-   - Postprocessing time
-   - Overhead (memory transfers, API calls, etc.)
-
-2. **Identifying Low-Hanging Fruits**: Looking for optimization opportunities in:
-   - Preprocessing operations
-   - Postprocessing operations
-   - Reducing overhead
-   - Memory transfer optimizations
-
-3. **ONNX Runtime Warnings**: Investigating warnings about operations being assigned to CPU instead of GPU:
-   ```
-   [W:onnxruntime:, session_state.cc:1168 onnxruntime::VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.
-   ```
-
-## Component Relationships
-
-```mermaid
-classDiagram
-    class VideoReader {
-        +read_frame()
-    }
-    
-    class Detector {
-        +RTMDet model
-        +preprocess(frame)
-        +inference(preprocessed)
-        +postprocess(outputs)
-    }
-    
-    class Tracker {
-        +BYTETracker
-        +update(detections)
-    }
-    
-    class PoseEstimator {
-        +RTMPose model
-        +preprocess(frame, bboxes)
-        +inference(preprocessed)
-        +postprocess(outputs)
-    }
-    
-    class OutputManager {
-        +save_visualization(frame, tracks, poses)
-        +save_data(tracks, poses)
-    }
-    
-    VideoReader --> Detector : frame
-    Detector --> Tracker : detections
-    Tracker --> PoseEstimator : tracked bboxes
-    PoseEstimator --> OutputManager : poses
-    Tracker --> OutputManager : tracks
+**Pattern**: Robust stream management with error recovery
+```python
+def capture_frame(cameras):
+    for cam_id, cap in cameras.items():
+        ret, frame = cap.read()
+        if not ret:
+            print(f"Failed to read from camera {cam_id}")
+            return None
 ```
 
-## Future Architecture Extensions
+**Features**:
+- Individual camera failure handling
+- Graceful degradation
+- Resource cleanup on exit
 
-1. **Action Recognition Module**: Will process pose sequences to identify volleyball-specific actions
-2. **Automated Pipeline Trigger**: Will monitor for new videos and automatically initiate processing
-3. **Analysis Dashboard**: Will provide coaches with insights derived from the processed data
+### 2. Frame Stitching Algorithm
+
+**Pattern**: Consistent multi-camera layout
+```python
+def stitch_frames(frame_1, frame_2, frame_3, frame_4):
+    # Resize to 960x540 each
+    # Arrange in 2x2 grid: [1|2]
+    #                      [3|4]
+    # Total: 1920x1080
+```
+
+### 3. Model Integration Pattern
+
+**Pattern**: Consistent model initialization and usage
+- Path management through `paths.py`
+- ONNX Runtime backend with CUDA acceleration
+- Standardized input/output handling
+
+**Models**:
+- **RTMDet-m**: 640x640 input, human detection
+- **RTMPose-m**: 192x256 input, pose estimation
+- **ByteTrack**: Multi-object tracking with ID persistence
+
+### 4. Data Flow Pattern
+
+**Pattern**: Consistent data structures throughout pipeline
+```python
+# Detection output: bboxes, scores
+# Tracking input: [x1, y1, x2, y2, score, class_id]
+# Pose input: list of bboxes
+# Pose output: keypoints, scores
+```
+
+## Performance Optimization Patterns
+
+### 1. Batch Processing
+- **Where**: Pose estimation stage
+- **How**: Process all detected persons in single inference call
+- **Benefit**: ~5x speed improvement over individual processing
+
+### 2. Timing Measurement Strategy
+- **Granular Timing**: Component-level and internal model timing
+- **Statistical Analysis**: Skip first frame for stable statistics
+- **Real-time Display**: Performance metrics overlaid on video
+
+### 3. Memory Management
+- **Resource Cleanup**: Proper camera and file handle management
+- **Error Handling**: Graceful failure recovery
+- **Optional Logging**: HDF5 logging disabled by default for performance
+
+## Integration Patterns
+
+### 1. Laboratory Environment Adaptation
+- **Camera Configuration**: 4 RTSP cameras positioned around lab space
+- **Processing Modes**: Single camera for focused analysis, multi-camera for comprehensive coverage
+- **Real-time Feedback**: Live display with performance metrics
+
+### 2. Data Output Patterns
+- **Visual Output**: Real-time display with pose overlays and timing information
+- **Data Logging**: Optional HDF5 format for offline analysis
+- **Performance Logging**: CSV files with detailed timing data
+
+### 3. Future Extension Points
+- **Joint Angle Calculation**: Keypoint data ready for biomechanical analysis
+- **Advanced Analytics**: Framework supports additional processing stages
+- **Integration Hooks**: Designed for laboratory workflow integration
+
+## Critical Implementation Details
+
+### 1. Modified RTMlib Components
+- **Batch Processing**: RTMPose modified for batch inference
+- **Timing Integration**: Internal timing hooks for performance analysis
+- **GPU Optimization**: CUDA acceleration with ONNX Runtime
+
+### 2. ByteTrack Integration
+- **Input Format**: `[x1, y1, x2, y2, score, class_id]`
+- **Tracking Parameters**: Optimized for laboratory environment
+- **ID Persistence**: Maintains consistent subject tracking
+
+### 3. Error Handling Strategies
+- **Stream Failures**: Continue processing with available cameras
+- **Model Errors**: Graceful degradation with error reporting
+- **Resource Management**: Proper cleanup in all exit scenarios
+
+This architecture provides a robust, high-performance foundation for real-time biomechanical analysis while maintaining flexibility for future enhancements.
