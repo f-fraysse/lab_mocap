@@ -43,6 +43,16 @@ cd ByteTrack && pip install -e . && cd ..
 cd rtmlib && pip install -e . && cd ..
 ```
 
+### Download Models
+
+Detection and pose estimation models are not included in the repository. Download them manually:
+
+1. Visit https://platform.openmmlab.com/deploee
+2. Download the following ONNX models:
+   - `rtmdet-m-640.onnx` (human detection)
+   - `rtmpose-m-256-192.onnx` (pose estimation)
+3. Save both models to the `/models/` subfolder
+
 ### Usage
 
 1. **Configure cameras** in `scripts/lab_mocap_stream.py`:
