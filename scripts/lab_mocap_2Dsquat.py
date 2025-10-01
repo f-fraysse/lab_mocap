@@ -8,6 +8,7 @@ import statistics
 from datetime import datetime
 from pathlib import Path
 from argparse import Namespace
+from collections import deque
 from rtmlib import RTMDet, RTMPose, draw_skeleton
 from yolox.tracker.byte_tracker import BYTETracker
 from paths import MODEL_DIR, DATA_DIR, OUTPUT_VIDEO_DIR, OUTPUT_H5_DIR, ensure_output_dirs
@@ -175,6 +176,10 @@ RTMPOSE_MODEL = 'rtmpose-m-256-192.onnx'
 # RTMPose engine
 device = 'cuda'
 backend = 'onnxruntime'
+
+# Knee angle history tracking
+knee_angle_history = deque(maxlen=1000)  # Store (timestamp, angle) tuples
+HISTORY_DURATION = 5.0  # seconds
 #---------- CONFIGURATION ------------------
 
 def stitch_frames(frame_1, frame_2, frame_3, frame_4):
@@ -237,6 +242,135 @@ def release_cameras(cameras):
     """Release all camera resources"""
     for cap in cameras.values():
         cap.release()
+
+def draw_knee_angle_graph(img, angle_history, current_time, frame_width, frame_height):
+    """
+    Draw a time history graph of knee angle in the bottom right corner.
+    
+    Args:
+        img: Input image to draw on
+        angle_history: deque of (timestamp, angle) tuples
+        current_time: Current elapsed time in seconds
+        frame_width: Width of the frame
+        frame_height: Height of the frame
+        
+    Returns:
+        img: Image with drawn graph
+    """
+    # Calculate graph dimensions (25% of frame size)
+    graph_width = int(frame_width * 0.25)
+    graph_height = int(frame_height * 0.25)
+    
+    # Position in bottom right corner with 10px margin
+    graph_x = frame_width - graph_width - 10
+    graph_y = frame_height - graph_height - 10
+    
+    # Draw white background
+    cv2.rectangle(img, (graph_x, graph_y), 
+                 (graph_x + graph_width, graph_y + graph_height),
+                 (255, 255, 255), -1)
+    
+    # Draw black border
+    cv2.rectangle(img, (graph_x, graph_y),
+                 (graph_x + graph_width, graph_y + graph_height),
+                 (0, 0, 0), 2)
+    
+    # Graph parameters
+    Y_MIN = -5
+    Y_MAX = 180
+    TIME_WINDOW = 5.0  # seconds
+    
+    # Calculate graph area (with margins for labels)
+    margin_left = 40
+    margin_right = 10
+    margin_top = 30
+    margin_bottom = 25
+    
+    plot_x = graph_x + margin_left
+    plot_y = graph_y + margin_top
+    plot_width = graph_width - margin_left - margin_right
+    plot_height = graph_height - margin_top - margin_bottom
+    
+    # Draw axes
+    # Y-axis (left side)
+    cv2.line(img, (plot_x, plot_y), (plot_x, plot_y + plot_height), (0, 0, 0), 2)
+    # X-axis (bottom)
+    cv2.line(img, (plot_x, plot_y + plot_height), 
+            (plot_x + plot_width, plot_y + plot_height), (0, 0, 0), 2)
+    
+    # Draw gridlines and Y-axis labels
+    y_ticks = [0, 45, 90, 135, 180]
+    for y_val in y_ticks:
+        # Calculate pixel position
+        y_normalized = (y_val - Y_MIN) / (Y_MAX - Y_MIN)
+        y_pixel = plot_y + plot_height - int(y_normalized * plot_height)
+        
+        # Draw gridline
+        cv2.line(img, (plot_x, y_pixel), 
+                (plot_x + plot_width, y_pixel), (200, 200, 200), 1)
+        
+        # Draw label
+        label = f"{y_val}"
+        cv2.putText(img, label, (plot_x - 35, y_pixel + 5),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+    
+    # Draw X-axis label
+    cv2.putText(img, "Time (s)", (plot_x + plot_width // 2 - 25, plot_y + plot_height + 20),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+    
+    # Draw Y-axis label (rotated text approximation - write vertically)
+    cv2.putText(img, "Angle", (plot_x - 35, plot_y - 10),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+    cv2.putText(img, "(deg)", (plot_x - 35, plot_y + 5),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+    
+    # Filter history to last 5 seconds and convert to list
+    time_start = current_time - TIME_WINDOW
+    recent_data = [(t, angle) for t, angle in angle_history if t >= time_start]
+    
+    # Plot the data
+    if len(recent_data) > 1:
+        points = []
+        for timestamp, angle in recent_data:
+            # Normalize time to graph x-coordinate
+            time_normalized = (timestamp - time_start) / TIME_WINDOW
+            x_pixel = plot_x + int(time_normalized * plot_width)
+            
+            # Normalize angle to graph y-coordinate
+            angle_clamped = max(Y_MIN, min(Y_MAX, angle))
+            y_normalized = (angle_clamped - Y_MIN) / (Y_MAX - Y_MIN)
+            y_pixel = plot_y + plot_height - int(y_normalized * plot_height)
+            
+            points.append((x_pixel, y_pixel))
+        
+        # Draw lines connecting the points (thick blue line)
+        for i in range(len(points) - 1):
+            cv2.line(img, points[i], points[i + 1], (255, 0, 0), 3)
+    
+    # Display current angle value (top right of graph)
+    if len(angle_history) > 0:
+        _, current_angle = angle_history[-1]
+        angle_text = f"{current_angle:.0f} deg"
+        
+        # Position text in top right of graph area
+        text_x = graph_x + graph_width - 80
+        text_y = graph_y + 20
+        
+        # Get text size for background
+        (text_width, text_height), baseline = cv2.getTextSize(
+            angle_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        
+        # Draw black background
+        cv2.rectangle(img,
+                     (text_x - 5, text_y - text_height - 5),
+                     (text_x + text_width + 5, text_y + baseline + 5),
+                     (0, 0, 0), -1)
+        
+        # Draw yellow text
+        cv2.putText(img, angle_text, (text_x, text_y),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    
+    return img
 
 # Create profiling logs directory and initialize CSV file (if enabled)
 log_file = None
@@ -466,30 +600,9 @@ try:
                 try:
                     knee_angle = calculate_knee_flexion_angle(hip_pos, knee_pos, ankle_pos)
                     
-                    # Position angle text near the knee with offset
-                    text_x = int(knee_pos[0] + 20)
-                    text_y = int(knee_pos[1] - 10)
-                    
-                    # Ensure text stays within image bounds
-                    text_x = max(10, min(text_x, width - 150))
-                    text_y = max(30, min(text_y, height - 10))
-                    
-                    # Draw angle text with background for better visibility
-                    angle_text = f"{knee_angle:.0f} deg"
-                    
-                    # Get text size for background rectangle
-                    (text_width, text_height), baseline = cv2.getTextSize(
-                        angle_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
-                    
-                    # Draw background rectangle
-                    cv2.rectangle(img_show, 
-                                (text_x - 5, text_y - text_height - 5),
-                                (text_x + text_width + 5, text_y + baseline + 5),
-                                (0, 0, 0), -1)  # Black background
-                    
-                    # Draw angle text
-                    cv2.putText(img_show, angle_text, (text_x, text_y),
-                              cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)  # Yellow text
+                    # Add to history (time in seconds from start)
+                    current_elapsed_time = time.time() - global_start
+                    knee_angle_history.append((current_elapsed_time, knee_angle))
                     
                 except Exception as e:
                     # Handle any calculation errors gracefully
@@ -594,6 +707,11 @@ try:
         fps_display = 1000 / total_frame_time if total_frame_time > 0 else 0
         img_show = cv2.putText(img_show, f'total: {total_frame_time:.1f} ms ({fps_display:.0f} FPS)', 
                               (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        # Draw knee angle graph in bottom right corner
+        if len(knee_angle_history) > 0:
+            current_elapsed_time = time.time() - global_start
+            img_show = draw_knee_angle_graph(img_show, knee_angle_history, current_elapsed_time, width, height)
 
         # Display frame
         cv2.imshow('Lab MoCap - 2D Squat Analysis', img_show)

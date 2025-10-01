@@ -42,8 +42,12 @@
 7. **2D Squat Analysis System (`lab_mocap_2Dsquat.py`)**
    - **Knee Flexion Angle Calculation**: Real-time computation using hip-knee-ankle keypoints
      - Custom formula: `180° - arccos(dot_product)` where 0° = straight leg
-     - Yellow text display with black background for visibility
+     - Time history graph in bottom right corner (last 5 seconds)
+     - White background, black axes, thick blue plot line
+     - Y-axis: -5° to 180° with gridlines at 0°, 45°, 90°, 135°, 180°
+     - Current angle value displayed in top right (yellow text, black background)
      - Only calculated when all three keypoints have confidence > 0.5
+     - Uses `collections.deque` with 1000-entry capacity for rolling window
    
    - **Automatic Squat Repetition Counting**: Biomechanically-based rep detection
      - Uses hip-knee vertical position comparison for squat validation

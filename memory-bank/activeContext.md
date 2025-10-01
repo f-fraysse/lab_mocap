@@ -53,15 +53,24 @@ SELECTED_CAMERA = 1     # Which camera (1-4) for single mode
 4. **Implemented Biomechanical Analysis**: Real-time knee angle calculation and squat repetition counting
 5. **Enhanced Visual Feedback**: Large status indicators and custom skeleton visualization
 6. **Added Custom Drawing System**: `draw_skeleton_custom()` function for selective keypoint display
-7. **Successful Testing**: Confirmed real-time performance with specialized analysis features
+7. **Added Knee Angle Time History Graph**: Real-time graph visualization in bottom right corner
+   - Displays last 5 seconds of knee angle data
+   - White background with black axes and thick blue plot line
+   - Y-axis: -5° to 180° with gridlines
+   - Current angle value displayed in top right of graph
+   - Uses `collections.deque` for efficient rolling window storage
+8. **Successful Testing**: Confirmed real-time performance with specialized analysis features
 
 ## Squat Analysis Features (`lab_mocap_2Dsquat.py`)
 
 ### Dual Analysis System
 - **Knee Flexion Angle**: Real-time calculation using hip-knee-ankle keypoints
   - Formula: `180° - arccos(dot_product)` where 0° = straight leg
-  - Yellow text display near knee with black background
+  - Displayed in time history graph (bottom right corner) showing last 5 seconds
+  - Graph: white background, black axes, thick blue line, Y-axis: -5° to 180°
+  - Current angle value shown in top right of graph (yellow text, black background)
   - Only calculated when all three keypoints have confidence > 0.5
+  - Uses `deque` with 1000-entry capacity for efficient rolling window
 
 - **Squat Repetition Counter**: Automatic counting based on biomechanical criteria
   - Uses hip-knee vertical position comparison
