@@ -10,6 +10,9 @@ tqdm
 matplotlib
 opencv-python
 
+# GUI
+PyQt5
+
 # Deep learning
 torch>=1.7
 torchvision>=0.10.0

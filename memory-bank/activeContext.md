@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. The current focus is on **specialized biomechanical analysis applications** with real-time RTSP stream processing and integrated human pose estimation.
+The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. A comprehensive **GUI application** has been developed that wraps the existing functionality into an intuitive interface with real-time angle tracking and customizable visualization.
 
 ### Primary Achievements
 
@@ -60,6 +60,14 @@ SELECTED_CAMERA = 1     # Which camera (1-4) for single mode
    - Current angle value displayed in top right of graph
    - Uses `collections.deque` for efficient rolling window storage
 8. **Successful Testing**: Confirmed real-time performance with specialized analysis features
+9. **Developed GUI Application (`lab_mocap_gui.py`)**: Complete PyQt5-based interface
+   - Menu bar with Input and Display configuration dialogs
+   - Main display area with real-time video and configurable overlays
+   - Left sidebar with 3 angle graph panels (matplotlib integration)
+   - Track ID selector for multi-person angle tracking
+   - Threaded video processing to prevent GUI freezing
+   - Modular architecture with separate components for dialogs, graphs, and processing
+   - Fixed PyQt5 signal type compatibility issues (numpy array handling)
 
 ## Squat Analysis Features (`lab_mocap_2Dsquat.py`)
 
@@ -105,6 +113,61 @@ RTSP Capture → Camera Selection/Stitching → Detection → Tracking → Pose 
 - **Tracking**: ByteTrack with optimized parameters
 - **Backend**: ONNX Runtime with CUDA acceleration
 
+## GUI Application Architecture
+
+### File Structure
+```
+scripts/
+├── lab_mocap_gui.py              # Main entry point
+└── gui/
+    ├── __init__.py
+    ├── config.py                 # Configuration management
+    ├── main_window.py            # Main window class
+    ├── input_dialog.py           # Input configuration dialog
+    ├── display_dialog.py         # Display options dialog
+    ├── video_thread.py           # Video processing thread
+    ├── angle_graph_widget.py     # Matplotlib graph widget
+    └── angle_calculator.py       # Joint angle calculations
+```
+
+### Key Components
+
+**Input Dialog:**
+- Camera mode selection (single/all)
+- Camera number selection
+- Angle computation camera (for all mode)
+- Apply button restarts video processing
+
+**Display Dialog:**
+- Bounding boxes toggle
+- Track IDs toggle
+- Keypoints toggle with size slider
+- Skeleton connections with grouped controls:
+  - Left/Right Leg, Left/Right Arm, Torso, Head
+  - Color picker for each group
+  - Thickness slider for each group
+- Reset to defaults button
+
+**Angle Graphs:**
+- Track ID selector (dynamically populated)
+- 3 independent graph panels
+- Joint selection: Hip, Knee, Elbow (left side only currently)
+- 5-second rolling window display
+- Matplotlib integration with real-time updates
+
+### Technical Notes
+
+**PyQt5 Signal Handling:**
+- Signals require `object` type for numpy arrays
+- Keypoints/scores converted to lists before emission
+- Converted back to numpy arrays for processing
+- Critical for thread-safe communication
+
+**Threading:**
+- Video processing runs in separate QThread
+- Prevents GUI freezing during heavy computation
+- Proper cleanup on window close
+
 ## Current Status
 
 ### ✅ Completed
@@ -113,17 +176,31 @@ RTSP Capture → Camera Selection/Stitching → Detection → Tracking → Pose 
 - Integrated HPE pipeline (detection → tracking → pose estimation)
 - Performance optimization and profiling
 - Clean configuration system
+- **GUI Application with full functionality**
+- **Real-time angle tracking and visualization**
+- **Configurable display options**
 - Memory bank updates for lab context
 
 ### 🔄 In Progress
-- Laboratory environment testing and validation
-- Performance monitoring under various conditions
+- GUI testing and refinement
+- Bug fixes for edge cases
 
-### 📋 Future Work
-- Joint angle calculation from pose keypoints
-- Advanced biomechanical analysis features
-- Potential optimization for higher frame rates
-- Integration with laboratory data collection systems
+### 📋 Future Work - GUI Enhancements
+1. **Angle Graph Improvements** (Priority)
+   - Better handling of lost IDs / missing keypoints
+   - Add left/right side selection for each joint (6 total options per dropdown)
+   
+2. **Input Dialog Bug Fix**
+   - Fix error when changing camera number (currently shows error popup but continues working)
+   
+3. **Additional Features**
+   - Export angle data to CSV
+   - Recording functionality
+   - Additional joint angle calculations
+   - Multi-person angle tracking
+   - Customizable graph time windows
+   - Performance metrics overlay
+   - Configurable camera URLs (not hardcoded)
 
 ## Key Considerations
 
