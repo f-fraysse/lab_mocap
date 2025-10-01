@@ -77,8 +77,8 @@ class MainWindow(QMainWindow):
         # Graph 1
         layout.addWidget(QLabel("Joint 1:"))
         self.joint1_combo = QComboBox()
-        self.joint1_combo.addItems(["Hip", "Knee", "Elbow"])
-        self.joint1_combo.setCurrentText("Hip")
+        self.joint1_combo.addItems(["Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Elbow", "Right Elbow"])
+        self.joint1_combo.setCurrentText("Left Hip")
         layout.addWidget(self.joint1_combo)
         
         self.graph1 = AngleGraphWidget()
@@ -87,8 +87,8 @@ class MainWindow(QMainWindow):
         # Graph 2
         layout.addWidget(QLabel("Joint 2:"))
         self.joint2_combo = QComboBox()
-        self.joint2_combo.addItems(["Hip", "Knee", "Elbow"])
-        self.joint2_combo.setCurrentText("Knee")
+        self.joint2_combo.addItems(["Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Elbow", "Right Elbow"])
+        self.joint2_combo.setCurrentText("Left Knee")
         layout.addWidget(self.joint2_combo)
         
         self.graph2 = AngleGraphWidget()
@@ -97,8 +97,8 @@ class MainWindow(QMainWindow):
         # Graph 3
         layout.addWidget(QLabel("Joint 3:"))
         self.joint3_combo = QComboBox()
-        self.joint3_combo.addItems(["Hip", "Knee", "Elbow"])
-        self.joint3_combo.setCurrentText("Elbow")
+        self.joint3_combo.addItems(["Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Elbow", "Right Elbow"])
+        self.joint3_combo.setCurrentText("Left Elbow")
         layout.addWidget(self.joint3_combo)
         
         self.graph3 = AngleGraphWidget()
@@ -292,18 +292,28 @@ class MainWindow(QMainWindow):
         scores = scores_list[track_idx]
         
         # Calculate angles for each graph
-        joint1 = self.joint1_combo.currentText().lower()
-        angle1 = calculate_joint_angle(joint1, keypoints, scores, side='left')
+        # Parse joint selection (e.g., "Left Hip" -> side='left', joint='hip')
+        selection1 = self.joint1_combo.currentText()
+        parts1 = selection1.split()
+        side1 = parts1[0].lower()  # 'left' or 'right'
+        joint1 = parts1[1].lower()  # 'hip', 'knee', or 'elbow'
+        angle1 = calculate_joint_angle(joint1, keypoints, scores, side=side1)
         if angle1 is not None:
             self.graph1.add_data_point(angle1)
         
-        joint2 = self.joint2_combo.currentText().lower()
-        angle2 = calculate_joint_angle(joint2, keypoints, scores, side='left')
+        selection2 = self.joint2_combo.currentText()
+        parts2 = selection2.split()
+        side2 = parts2[0].lower()
+        joint2 = parts2[1].lower()
+        angle2 = calculate_joint_angle(joint2, keypoints, scores, side=side2)
         if angle2 is not None:
             self.graph2.add_data_point(angle2)
         
-        joint3 = self.joint3_combo.currentText().lower()
-        angle3 = calculate_joint_angle(joint3, keypoints, scores, side='left')
+        selection3 = self.joint3_combo.currentText()
+        parts3 = selection3.split()
+        side3 = parts3[0].lower()
+        joint3 = parts3[1].lower()
+        angle3 = calculate_joint_angle(joint3, keypoints, scores, side=side3)
         if angle3 is not None:
             self.graph3.add_data_point(angle3)
             
