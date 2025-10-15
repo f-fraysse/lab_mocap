@@ -9,6 +9,7 @@ from argparse import Namespace
 from rtmlib import RTMDet, RTMPose
 from yolox.tracker.byte_tracker import BYTETracker
 from paths import MODEL_DIR
+from .test_gopro_stream import GoProCam
 
 
 class VideoProcessingThread(QThread):
@@ -23,6 +24,7 @@ class VideoProcessingThread(QThread):
         self.config = config
         self.running = False
         self.cameras = {}
+        self.gopro_cam = None
         
         # Models
         self.detector = None
@@ -76,15 +78,26 @@ class VideoProcessingThread(QThread):
             
             self.cameras = {}
             
-            if self.config.camera_mode == "single":
+            if self.config.camera_mode == "single_ip":
                 cam_id = self.config.selected_camera
                 if cam_id not in self.config.camera_urls:
                     raise ValueError(f"Invalid camera selection: {cam_id}")
                 self.cameras[cam_id] = cv2.VideoCapture(self.config.camera_urls[cam_id])
                 
-            elif self.config.camera_mode == "all":
+            elif self.config.camera_mode == "all_ip":
                 for cam_id, url in self.config.camera_urls.items():
                     self.cameras[cam_id] = cv2.VideoCapture(url)
+                    
+            elif self.config.camera_mode == "single_gopro":
+                # Initialize GoPro camera
+                self.gopro_cam = GoProCam(
+                    index=self.config.gopro_index,
+                    size=self.config.gopro_size,
+                    fps=self.config.gopro_fps,
+                    fourcc=self.config.gopro_fourcc,
+                    warmup_frames=self.config.gopro_warmup_frames
+                )
+                self.gopro_cam.open()
             
             # Enable OpenCV optimizations
             cv2.setUseOptimized(True)
@@ -101,8 +114,21 @@ class VideoProcessingThread(QThread):
                 cap.release()
         self.cameras = {}
         
+        # Release GoPro camera if active
+        if self.gopro_cam is not None:
+            self.gopro_cam.close()
+            self.gopro_cam = None
+        
     def capture_frame(self):
         """Capture frame(s) based on camera configuration"""
+        if self.config.camera_mode == "single_gopro":
+            # Capture from GoPro
+            ret, frame = self.gopro_cam.read()
+            if not ret:
+                return None, None
+            return frame, None  # No angle camera for single GoPro
+        
+        # Handle IP cameras
         frames = {}
         
         for cam_id, cap in self.cameras.items():
@@ -111,9 +137,9 @@ class VideoProcessingThread(QThread):
                 return None, None
             frames[cam_id] = frame
         
-        if self.config.camera_mode == "single":
+        if self.config.camera_mode == "single_ip":
             return frames[self.config.selected_camera], self.config.selected_camera
-        elif self.config.camera_mode == "all":
+        elif self.config.camera_mode == "all_ip":
             # Stitch frames into 2x2 grid
             stitched = self.stitch_frames(frames[1], frames[2], frames[3], frames[4])
             return stitched, self.config.angle_computation_camera

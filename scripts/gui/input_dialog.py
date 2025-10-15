@@ -32,23 +32,28 @@ class InputDialog(QDialog):
         mode_group = QGroupBox("Camera Mode")
         mode_layout = QVBoxLayout()
         
-        self.single_radio = QRadioButton("Single Camera")
-        self.all_radio = QRadioButton("All Cameras")
+        self.single_ip_radio = QRadioButton("Single IP Camera")
+        self.all_ip_radio = QRadioButton("All IP Cameras")
+        self.single_gopro_radio = QRadioButton("Single GoPro Camera")
         
         # Button group for mutual exclusivity
         self.mode_button_group = QButtonGroup()
-        self.mode_button_group.addButton(self.single_radio)
-        self.mode_button_group.addButton(self.all_radio)
+        self.mode_button_group.addButton(self.single_ip_radio)
+        self.mode_button_group.addButton(self.all_ip_radio)
+        self.mode_button_group.addButton(self.single_gopro_radio)
         
-        mode_layout.addWidget(self.single_radio)
-        mode_layout.addWidget(self.all_radio)
+        mode_layout.addWidget(self.single_ip_radio)
+        mode_layout.addWidget(self.all_ip_radio)
+        mode_layout.addWidget(self.single_gopro_radio)
         mode_group.setLayout(mode_layout)
         
         # Set current mode
-        if self.config.camera_mode == "single":
-            self.single_radio.setChecked(True)
-        else:
-            self.all_radio.setChecked(True)
+        if self.config.camera_mode == "single_ip":
+            self.single_ip_radio.setChecked(True)
+        elif self.config.camera_mode == "all_ip":
+            self.all_ip_radio.setChecked(True)
+        else:  # single_gopro
+            self.single_gopro_radio.setChecked(True)
         
         layout.addWidget(mode_group)
         
@@ -85,8 +90,10 @@ class InputDialog(QDialog):
         # Update group visibility based on mode
         self.update_group_visibility()
         
-        # Connect mode change signal
-        self.single_radio.toggled.connect(self.update_group_visibility)
+        # Connect mode change signals
+        self.single_ip_radio.toggled.connect(self.update_group_visibility)
+        self.all_ip_radio.toggled.connect(self.update_group_visibility)
+        self.single_gopro_radio.toggled.connect(self.update_group_visibility)
         
         # Buttons
         button_layout = QHBoxLayout()
@@ -107,22 +114,27 @@ class InputDialog(QDialog):
         
     def update_group_visibility(self):
         """Update visibility of camera selection groups based on mode"""
-        if self.single_radio.isChecked():
+        if self.single_ip_radio.isChecked():
             self.single_group.setEnabled(True)
             self.all_group.setEnabled(False)
-        else:
+        elif self.all_ip_radio.isChecked():
             self.single_group.setEnabled(False)
             self.all_group.setEnabled(True)
+        else:  # single_gopro
+            self.single_group.setEnabled(False)
+            self.all_group.setEnabled(False)
             
     def apply_changes(self):
         """Apply configuration changes"""
         # Update camera mode
-        if self.single_radio.isChecked():
-            self.config.camera_mode = "single"
+        if self.single_ip_radio.isChecked():
+            self.config.camera_mode = "single_ip"
             self.config.selected_camera = int(self.camera_combo.currentText())
-        else:
-            self.config.camera_mode = "all"
+        elif self.all_ip_radio.isChecked():
+            self.config.camera_mode = "all_ip"
             self.config.angle_computation_camera = int(self.angle_camera_combo.currentText())
+        else:  # single_gopro
+            self.config.camera_mode = "single_gopro"
         
         self.accept()
         

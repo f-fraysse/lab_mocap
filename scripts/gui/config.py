@@ -7,9 +7,9 @@ class AppConfig:
     
     def __init__(self):
         # Camera configuration
-        self.camera_mode = "single"  # "single" or "all"
+        self.camera_mode = "single_gopro"  # "single_ip", "all_ip", or "single_gopro"
         self.selected_camera = 4  # 1-4
-        self.angle_computation_camera = 4  # 1-4 (used in "all" mode)
+        self.angle_computation_camera = 4  # 1-4 (used in "all_ip" mode)
         
         # Camera URLs (hardcoded RTSP addresses)
         self.camera_urls = {
@@ -18,6 +18,13 @@ class AppConfig:
             3: "rtsp://ubnt:ubnt@192.168.5.42:554/s0",
             4: "rtsp://ubnt:ubnt@192.168.5.48:554/s0"
         }
+        
+        # GoPro configuration
+        self.gopro_index = 0
+        self.gopro_size = (1920, 1080)
+        self.gopro_fps = 30
+        self.gopro_fourcc = 'MJPG'
+        self.gopro_warmup_frames = 20
         
         # Display options
         self.show_bboxes = True
