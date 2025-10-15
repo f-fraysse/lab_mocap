@@ -4,6 +4,8 @@
 
 The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. A comprehensive **GUI application** has been developed that wraps the existing functionality into an intuitive interface with real-time angle tracking and customizable visualization.
 
+**Latest Update**: Successfully integrated **GoPro Hero 12 camera support** as a third input source alongside existing IP cameras. The GUI now supports three camera input modes: Single IP Camera, All IP Cameras, and Single GoPro Camera (default).
+
 ### Primary Achievements
 
 1. **Successfully created and tested `lab_mocap_stream.py`** - Base RTSP streaming with HPE pipeline
@@ -29,21 +31,33 @@ Based on initial testing with live RTSP streams:
 
 ### Camera Configuration System
 
-Implemented clean configuration system:
+Implemented clean configuration system with three input modes:
 ```python
-CAMERA_MODE = "single"  # Options: "single", "all"
-SELECTED_CAMERA = 1     # Which camera (1-4) for single mode
+CAMERA_MODE = "single_gopro"  # Options: "single_ip", "all_ip", "single_gopro"
+SELECTED_CAMERA = 1           # Which IP camera (1-4) for single_ip mode
 ```
 
-**Single Mode**: Processes one selected camera stream
-**All Mode**: Processes all 4 cameras, automatically stitches into 2x2 grid (1920x1080 total)
+**Camera Input Modes:**
+1. **Single IP Camera**: Processes one selected RTSP camera stream (1-4)
+2. **All IP Cameras**: Processes all 4 RTSP cameras, automatically stitches into 2x2 grid (1920x1080 total)
+3. **Single GoPro Camera** (Default): Processes GoPro Hero 12 via USB connection
 
-### RTSP Integration Details
+### Camera Integration Details
 
+**RTSP IP Cameras:**
 - **Camera URLs**: 4 laboratory cameras with RTSP streams
 - **Stream Handling**: Robust error handling for connection issues
 - **Frame Stitching**: Automatic 2x2 grid layout for multi-camera mode
 - **Resource Management**: Proper camera initialization and cleanup
+
+**GoPro Hero 12 Camera:**
+- **Connection**: USB via MSMF (Microsoft Media Foundation) backend
+- **Resolution**: 1920x1080
+- **Frame Rate**: 30 fps
+- **Format**: MJPG (Motion JPEG)
+- **Warmup**: 20 frames to skip splash/black frames
+- **Camera Index**: 0 (configurable)
+- **Implementation**: `GoProCam` class in `scripts/gui/test_gopro_stream.py`
 
 ## Recent Changes
 
@@ -68,6 +82,16 @@ SELECTED_CAMERA = 1     # Which camera (1-4) for single mode
    - Threaded video processing to prevent GUI freezing
    - Modular architecture with separate components for dialogs, graphs, and processing
    - Fixed PyQt5 signal type compatibility issues (numpy array handling)
+10. **Integrated GoPro Hero 12 Camera Support** (Latest - October 15, 2025):
+    - Added third camera input mode: "Single GoPro Camera"
+    - Renamed existing modes: "Single IP Camera" and "All IP Cameras"
+    - Created `GoProCam` class in `scripts/gui/test_gopro_stream.py`
+    - Modified `config.py` to support three camera modes with GoPro parameters
+    - Updated `input_dialog.py` with GoPro radio button and mode selection
+    - Enhanced `video_thread.py` to handle GoPro initialization and capture
+    - GoPro configuration: Index 0, 1920x1080, 30fps, MJPG format, 20 warmup frames
+    - GUI now defaults to GoPro camera on launch
+    - Seamless integration with existing pose estimation pipeline
 
 ## Squat Analysis Features (`lab_mocap_2Dsquat.py`)
 

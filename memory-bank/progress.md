@@ -10,10 +10,12 @@
    - Efficient frame capture with error recovery (~12.4ms average including latency)
 
 2. **Camera Configuration System**
-   - Clean configuration-driven camera management
-   - Single camera mode: Process one selected camera (1-4)
-   - Multi-camera mode: Process all 4 cameras with automatic 2x2 stitching
+   - Clean configuration-driven camera management with three input modes
+   - **Single IP Camera mode**: Process one selected RTSP camera (1-4)
+   - **All IP Cameras mode**: Process all 4 RTSP cameras with automatic 2x2 stitching
+   - **Single GoPro Camera mode**: Process GoPro Hero 12 via USB (default)
    - Dynamic resource allocation based on selected mode
+   - Seamless switching between camera sources via GUI
 
 3. **Human Detection**
    - RTMDet model successfully detects humans in laboratory environment
@@ -81,17 +83,46 @@
    - ONNX Runtime with CUDA backend for optimal performance
    - Efficient memory management and resource utilization
 
+### ✅ GUI Application
+
+9. **Complete PyQt5 GUI Application (`lab_mocap_gui.py`)**
+   - **Input Configuration Dialog**: Three camera mode selection
+     - Single IP Camera with camera number selection (1-4)
+     - All IP Cameras with angle computation camera selection
+     - Single GoPro Camera (no additional configuration needed)
+   - **Display Options Dialog**: Comprehensive visualization controls
+     - Toggle bounding boxes, track IDs, keypoints, skeleton
+     - Grouped skeleton controls (legs, arms, torso, head)
+     - Color picker and thickness slider for each group
+   - **Angle Tracking System**: Real-time joint angle visualization
+     - Track ID selector (dynamically populated)
+     - 3 independent matplotlib graph panels
+     - Joint selection: Hip, Knee, Elbow (left side)
+     - 5-second rolling window display
+   - **Threaded Processing**: Prevents GUI freezing during computation
+   - **Modular Architecture**: Separate components for maintainability
+
+10. **GoPro Hero 12 Integration**
+    - **USB Connection**: MSMF backend for Windows compatibility
+    - **Configuration**: 1920x1080, 30fps, MJPG format
+    - **Warmup System**: 20 frames to skip splash/black frames
+    - **GoProCam Class**: Reusable camera interface in `test_gopro_stream.py`
+    - **Seamless Integration**: Works with existing pose estimation pipeline
+    - **Default Input**: GUI launches with GoPro as default camera source
+
 ### ✅ Development Environment
 
 1. **Laboratory Integration**
    - Configured for biomechanics laboratory camera setup
    - RTSP stream handling optimized for laboratory network
+   - GoPro USB camera support for portable/field use
    - Flexible configuration for different research scenarios
 
 2. **Project Structure**
    - Clean separation between old volleyball code and new lab mocap system
    - Centralized configuration management
    - Proper resource cleanup and error handling
+   - Modular GUI architecture with separate dialog components
 
 ## What's Left to Build
 
@@ -184,6 +215,8 @@ Current performance with live RTSP streams:
 - ✅ Updated all memory bank documentation for lab context
 - ✅ Created primary processing script (`lab_mocap_stream.py`)
 - ✅ Validated real-time performance with live streams
+- ✅ Developed complete GUI application with angle tracking
+- ✅ Integrated GoPro Hero 12 camera support (October 15, 2025)
 
 ### 🔄 Cleanup in Progress
 
