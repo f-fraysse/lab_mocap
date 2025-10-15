@@ -210,14 +210,45 @@ scripts/
 - Bug fixes for edge cases
 
 ### 📋 Future Work - GUI Enhancements
-1. **Angle Graph Improvements** (Priority)
+1. **Multi-GoPro Camera Support** (Next Priority)
+   - Extend single GoPro to support up to 4 GoPro cameras
+   - Threading pattern for parallel capture (reference implementation provided):
+   ```python
+   import threading
+   
+   def show(idx, title):
+       cam = GoProCam(index=idx, size=(1920,1080), fps=30, fourcc='MJPG', warmup_frames=45)
+       cam.open()
+       while True:
+           ok, frame = cam.read()
+           if not ok: break
+           cv2.imshow(title, frame)
+           if cv2.waitKey(1) & 0xFF == ord('q'):
+               break
+       cam.close()
+   
+   for i in range(4):
+       threading.Thread(target=show, args=(i, f"GoPro {i}"), daemon=True).start()
+   
+   cv2.waitKey(0)
+   cv2.destroyAllWindows()
+   ```
+   - Implementation approach:
+     * Each GoPro runs in separate daemon thread for parallel capture
+     * Cameras identified by index 0-3
+     * Synchronize frame collection before processing
+     * Stitch into 2x2 grid (similar to "All IP Cameras" mode)
+     * Feed stitched frame into existing pose estimation pipeline
+   - New GUI mode: "All GoPro Cameras"
+
+2. **Angle Graph Improvements**
    - Better handling of lost IDs / missing keypoints
    - Add left/right side selection for each joint (6 total options per dropdown)
    
-2. **Input Dialog Bug Fix**
+3. **Input Dialog Bug Fix**
    - Fix error when changing camera number (currently shows error popup but continues working)
    
-3. **Additional Features**
+4. **Additional Features**
    - Export angle data to CSV
    - Recording functionality
    - Additional joint angle calculations
