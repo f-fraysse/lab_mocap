@@ -210,6 +210,151 @@ def stitch_frames(frame_1, frame_2, frame_3, frame_4):
 - **Advanced Analytics**: Framework supports additional processing stages
 - **Integration Hooks**: Designed for laboratory workflow integration
 
+### 8. Signed Angle Calculation Pattern
+
+**Pattern**: Cross product-based directional angle determination
+```python
+def calculate_angle(point1, point2, point3, signed=False):
+    # Calculate vectors from vertex
+    vec1 = p1 - p2
+    vec2 = p3 - p2
+    
+    # Standard angle calculation
+    angle_deg = 180 - np.degrees(np.arccos(dot_product))
+    
+    # If signed, use cross product for direction
+    if signed:
+        cross_product = vec1[0] * vec2[1] - vec1[1] * vec2[0]
+        if cross_product < 0:
+            angle_deg = -angle_deg
+```
+
+**Application**:
+- **Hip Angle**: Positive = extension, Negative = flexion (sign reversed)
+- **Knee Angle**: Positive = flexion, Negative = extension
+- Enables biomechanically meaningful angle representations
+
+### 9. Gait Analysis Pipeline Pattern
+
+**Pattern**: Multi-stage post-processing for stride analysis
+```python
+# 1. Signal filtering
+ankle_x_filtered = butterworth_filter(ankle_x, cutoff=10, fs=30, order=1)
+
+# 2. Footstrike detection
+footstrike_indices = detect_footstrikes(ankle_x_filtered, 
+                                       prominence=5, 
+                                       min_spacing=0.25)
+
+# 3. Stride segmentation
+strides = segment_strides(data, footstrike_indices)
+
+# 4. Time normalization
+normalized_stride = normalize_stride(stride_data, num_points=101)
+```
+
+**Components**:
+- **Butterworth Filtering**: Low-pass filter (10 Hz) for noise reduction
+- **Peak Detection**: Local minima in ankle X position
+- **Stride Segmentation**: Footstrike n to footstrike n+1
+- **Cubic Interpolation**: Normalize to 0-100% (101 points)
+
+### 10. Recording and Analysis Pattern
+
+**Pattern**: Threaded post-processing with comprehensive output
+```python
+def on_recording_stopped(self):
+    # Run analysis in separate thread
+    analysis_thread = Thread(target=self.analyze_and_save_recording)
+    analysis_thread.start()
+
+def analyze_and_save_recording(self):
+    # Save CSV, video, perform gait analysis
+    # Generate 5 PNG graphs
+    # All outputs to /output/{recording_name}/
+```
+
+**Output Structure**:
+- CSV: Frame-by-frame data
+- MP4: Video with pose overlays
+- 5 PNG graphs: Ankle X, hip angles, knee angles, normalized strides
+
+### 11. Fixed Y-Axis Graph Pattern
+
+**Pattern**: Biomechanically meaningful axis limits
+```python
+class TreadmillAngleGraph:
+    def __init__(self, title, y_min, y_max):
+        self.y_min = y_min
+        self.y_max = y_max
+        self.ax.set_ylim(y_min, y_max)
+```
+
+**Limits**:
+- Hip: -30° to +100° (extension to flexion range)
+- Knee: -10° to +160° (extension to flexion range)
+- Consistent across real-time and saved graphs
+
+### 12. Statistical Visualization Pattern
+
+**Pattern**: Mean with standard deviation shading
+```python
+# Calculate statistics
+mean = np.mean(data, axis=0)
+std = np.std(data, axis=0)
+
+# Plot shaded region
+ax.fill_between(x, mean - std, mean + std, 
+                color='gray', alpha=0.3, label='±1 SD')
+
+# Plot mean line on top
+ax.plot(x, mean, 'k-', linewidth=3, label='Mean')
+```
+
+**Benefits**:
+- Visualizes stride-to-stride variability
+- Identifies consistent vs. variable gait phases
+- Standard biomechanics visualization
+
+### 13. Frame Inset Visualization Pattern
+
+**Pattern**: Video frame integration with time-series data
+```python
+from matplotlib.gridspec import GridSpec
+
+# Create figure with dedicated frame panel
+fig = plt.figure(figsize=(14, 9))
+gs = GridSpec(2, 1, height_ratios=[1, 3], hspace=0.3)
+
+# Frame panel at top
+ax_frames = fig.add_subplot(gs[0])
+ax_frames.axis('off')
+
+# Main plot below
+ax = fig.add_subplot(gs[1])
+
+# Add frame insets using fig.add_axes()
+for i, (frame, x_pos, pct) in enumerate(zip(frames, x_positions, percentages)):
+    ax_inset = fig.add_axes([x_pos, y_pos, width, height])
+    ax_inset.imshow(frame)
+    ax_inset.axis('off')
+    
+    # Add vertical reference line
+    ax.axvline(x=pct, linestyle=':', color='black', linewidth=1.5)
+```
+
+**Application**:
+- **Third Stride Selection**: Uses stride 3 (index 2) for representative visualization
+- **Key Time Points**: 0%, 25%, 50%, 75%, 100% of stride cycle
+- **Frame Extraction**: `frame_idx = int(percentage * (len(frames) - 1) / 100)`
+- **Layout**: 25% top panel for frames, 75% bottom for graph
+
+**Benefits**:
+- Provides visual context for biomechanical data
+- Links kinematic curves to body positions
+- Facilitates interpretation of gait patterns
+- Standard presentation format for gait analysis
+
 ## Critical Implementation Details
 
 ### 1. Modified RTMlib Components

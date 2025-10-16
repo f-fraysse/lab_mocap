@@ -83,7 +83,7 @@
    - ONNX Runtime with CUDA backend for optimal performance
    - Efficient memory management and resource utilization
 
-### ✅ GUI Application
+### ✅ GUI Applications
 
 9. **Complete PyQt5 GUI Application (`lab_mocap_gui.py`)**
    - **Input Configuration Dialog**: Three camera mode selection
@@ -109,6 +109,33 @@
     - **GoProCam Class**: Reusable camera interface in `test_gopro_stream.py`
     - **Seamless Integration**: Works with existing pose estimation pipeline
     - **Default Input**: GUI launches with GoPro as default camera source
+
+11. **Treadmill Analysis GUI (`lab_treadmill_gui.py`)** - October 16, 2025
+    - **Specialized Interface**: 2 real-time angle graphs (hip and knee)
+    - **Signed Angle Calculations**: Cross product method for directional angles
+      - Hip: Positive = extension, Negative = flexion
+      - Knee: Positive = flexion, Negative = extension
+    - **Automatic Person Tracking**: Lowest track ID selected automatically
+    - **Recording System**: Toggle button with customizable recording names
+    - **Post-Recording Analysis**: Automatic gait analysis pipeline
+      - Footstrike detection using ankle X position minima
+      - Butterworth filtering (1st order, 10 Hz)
+      - Stride segmentation and normalization (0-100%)
+    - **Comprehensive Output**: 5 PNG graphs, CSV data, MP4 video
+      - Ankle X position with footstrikes
+      - Hip/knee angles with footstrikes
+      - Normalized strides with ±1 SD shading and frame insets
+    - **Frame Insets Feature**: Visual context from third stride
+      - 5 frames extracted at 0%, 25%, 50%, 75%, 100% of stride cycle
+      - Displayed at top of normalized stride graphs
+      - Black dotted vertical reference lines at each percentage
+      - 14"x9" figure layout with dedicated frame panel
+    - **New Components**:
+      - `treadmill_main_window.py` - Main GUI window
+      - `treadmill_video_thread.py` - Simplified video processing
+      - `treadmill_angle_graph.py` - Fixed Y-axis angle graphs
+      - `recording_widget.py` - Recording controls
+      - `gait_analysis.py` - Complete gait analysis pipeline with frame visualization
 
 ### ✅ Development Environment
 

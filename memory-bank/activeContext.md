@@ -2,9 +2,12 @@
 
 ## Current Work Focus
 
-The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. A comprehensive **GUI application** has been developed that wraps the existing functionality into an intuitive interface with real-time angle tracking and customizable visualization.
+The Lab MoCap project has successfully transitioned from the volleyball HPE project to a biomechanics laboratory setup. Two comprehensive **GUI applications** have been developed:
 
-**Latest Update**: Successfully integrated **GoPro Hero 12 camera support** as a third input source alongside existing IP cameras. The GUI now supports three camera input modes: Single IP Camera, All IP Cameras, and Single GoPro Camera (default).
+1. **General Lab MoCap GUI** (`lab_mocap_gui.py`) - Multi-purpose pose analysis with configurable angle tracking
+2. **Treadmill Analysis GUI** (`lab_treadmill_gui.py`) - Specialized for treadmill running gait analysis
+
+**Latest Update (October 16, 2025)**: Successfully created **Treadmill Analysis GUI** with automatic gait analysis, footstrike detection, and stride normalization. Features signed angle calculations, recording functionality, and comprehensive post-recording analysis with 5 output graphs.
 
 ### Primary Achievements
 
@@ -15,6 +18,12 @@ The Lab MoCap project has successfully transitioned from the volleyball HPE proj
    - Enhanced visual feedback with large status indicators
    - Custom left leg visualization (hip-knee-ankle only)
    - 3-frame squat validation system for accuracy
+3. **Created Treadmill Analysis GUI (`lab_treadmill_gui.py`)** - Complete gait analysis system:
+   - Real-time hip and knee angle tracking with signed angles
+   - Recording functionality with automatic post-recording analysis
+   - Footstrike detection using ankle X position minima
+   - Stride segmentation and normalization (0-100%)
+   - Comprehensive output: 5 PNG graphs, CSV data, and video with overlays
 
 ### Current Performance Metrics
 
@@ -92,6 +101,64 @@ SELECTED_CAMERA = 1           # Which IP camera (1-4) for single_ip mode
     - GoPro configuration: Index 0, 1920x1080, 30fps, MJPG format, 20 warmup frames
     - GUI now defaults to GoPro camera on launch
     - Seamless integration with existing pose estimation pipeline
+
+## Treadmill Analysis GUI Features (`lab_treadmill_gui.py`)
+
+### Overview
+Specialized GUI for analyzing sagittal plane hip and knee kinematics during treadmill running with automatic gait analysis.
+
+### Real-time Features
+- **2 Angle Graphs**: Left hip (-30° to +100°) and left knee (-10° to +160°)
+- **Automatic Person Tracking**: Always tracks lowest detected track ID
+- **Signed Angle Calculations**: 
+  - Hip: Positive = extension, Negative = flexion
+  - Knee: Positive = flexion, Negative = extension
+  - Uses cross product to determine sign
+- **Fixed GoPro Input**: Index 0, no camera selection needed
+
+### Recording Functionality
+- **Toggle Button**: Red dot icon for start/stop recording
+- **Name Input**: Default "test_00", customizable
+- **Data Collection**: Hip angles, knee angles, ankle coordinates, video frames
+- **Automatic Analysis**: Triggered on recording stop
+
+### Post-Recording Analysis
+1. **Footstrike Detection**:
+   - Butterworth low-pass filter (1st order, 10 Hz) on ankle X coordinate
+   - Local minima detection with 0.25s minimum spacing
+   - Prominence-based peak detection
+
+2. **Stride Segmentation**:
+   - Separates data into individual strides (footstrike n to n+1)
+   - Discards data before first and after last footstrike
+
+3. **Time Normalization**:
+   - Each stride normalized to 0-100% using cubic interpolation
+   - 101 points per normalized stride
+
+### Output Files (saved to `/output/{recording_name}/`)
+1. **CSV File**: Frame, time, hip angle, knee angle, ankle X, ankle Y
+2. **Video File**: MP4 with pose overlays
+3. **5 PNG Graphs**:
+   - Ankle X position with footstrike markers
+   - Hip angles with footstrike markers
+   - Knee angles with footstrike markers
+   - Hip normalized strides (0-100%) with ±1 SD shading and frame insets
+   - Knee normalized strides (0-100%) with ±1 SD shading and frame insets
+
+### Frame Insets Feature (October 16, 2025)
+- **Third Stride Visualization**: Extracts 5 frames from the third detected stride
+- **Key Time Points**: 0%, 25%, 50%, 75%, 100% of stride cycle
+- **Visual Integration**: Frames displayed at top of normalized stride graphs
+- **Reference Lines**: Black dotted vertical lines at each percentage point
+- **Layout**: 14"x9" figure with 25% top panel for frames, 75% bottom for graph
+- **Fallback**: Gracefully handles cases with <3 strides (no frame insets shown)
+
+### Technical Implementation
+- **Signed Angles**: Cross product method in `angle_calculator.py`
+- **Gait Analysis**: Complete pipeline in `gait_analysis.py`
+- **Recording Widget**: Custom PyQt5 widget with toggle button
+- **Threaded Analysis**: Post-recording analysis runs in background thread
 
 ## Squat Analysis Features (`lab_mocap_2Dsquat.py`)
 

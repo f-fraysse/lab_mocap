@@ -18,7 +18,7 @@ LEFT_ANKLE_IDX = 15
 RIGHT_ANKLE_IDX = 16
 
 
-def calculate_angle(point1, point2, point3):
+def calculate_angle(point1, point2, point3, signed=False):
     """
     Calculate angle at point2 formed by point1-point2-point3.
     
@@ -26,9 +26,12 @@ def calculate_angle(point1, point2, point3):
         point1: (x, y) coordinates of first point
         point2: (x, y) coordinates of vertex point
         point3: (x, y) coordinates of third point
+        signed: If True, use cross product to determine sign (positive/negative)
         
     Returns:
-        angle_deg: Angle in degrees (0° = straight, 180° = fully bent)
+        angle_deg: Angle in degrees
+                   If signed=False: 0° = straight, 180° = fully bent
+                   If signed=True: positive = flexion, negative = extension
     """
     # Convert to numpy arrays
     p1 = np.array(point1)
@@ -49,8 +52,20 @@ def calculate_angle(point1, point2, point3):
     angle_rad = np.arccos(cos_angle)
     angle_deg = np.degrees(angle_rad)
     
-    # Return supplementary angle (so 0° = straight, 180° = fully bent)
-    return round(180 - angle_deg)
+    # Calculate supplementary angle (so 0° = straight, 180° = fully bent)
+    angle_deg = 180 - angle_deg
+    
+    # If signed angles requested, use cross product to determine sign
+    if signed:
+        # Calculate 2D cross product (z-component of 3D cross product)
+        # Positive = counter-clockwise, Negative = clockwise
+        cross_product = vec1[0] * vec2[1] - vec1[1] * vec2[0]
+        
+        # Apply sign based on cross product
+        if cross_product < 0:
+            angle_deg = -angle_deg
+    
+    return round(angle_deg)
 
 
 def calculate_hip_angle(keypoints, scores, side='left', confidence_threshold=0.5):
@@ -64,7 +79,8 @@ def calculate_hip_angle(keypoints, scores, side='left', confidence_threshold=0.5
         confidence_threshold: Minimum confidence for valid calculation
         
     Returns:
-        angle: Hip angle in degrees, or None if keypoints not confident
+        angle: Hip angle in degrees (signed: positive=extension, negative=flexion)
+               or None if keypoints not confident
     """
     if side == 'left':
         shoulder_idx = LEFT_SHOULDER_IDX
@@ -87,8 +103,9 @@ def calculate_hip_angle(keypoints, scores, side='left', confidence_threshold=0.5
     knee = keypoints[knee_idx]
     
     try:
-        angle = calculate_angle(shoulder, hip, knee)
-        return angle
+        angle = calculate_angle(shoulder, hip, knee, signed=True)
+        # Reverse sign for hip angle (positive=extension, negative=flexion)
+        return -angle
     except Exception as e:
         print(f"Error calculating hip angle: {e}")
         return None
@@ -105,7 +122,8 @@ def calculate_knee_angle(keypoints, scores, side='left', confidence_threshold=0.
         confidence_threshold: Minimum confidence for valid calculation
         
     Returns:
-        angle: Knee angle in degrees, or None if keypoints not confident
+        angle: Knee angle in degrees (signed: positive=flexion, negative=extension)
+               or None if keypoints not confident
     """
     if side == 'left':
         hip_idx = LEFT_HIP_IDX
@@ -128,7 +146,7 @@ def calculate_knee_angle(keypoints, scores, side='left', confidence_threshold=0.
     ankle = keypoints[ankle_idx]
     
     try:
-        angle = calculate_angle(hip, knee, ankle)
+        angle = calculate_angle(hip, knee, ankle, signed=True)
         return angle
     except Exception as e:
         print(f"Error calculating knee angle: {e}")
